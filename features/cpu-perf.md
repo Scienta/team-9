@@ -12,3 +12,4 @@ PR: https://github.com/Scienta/team-9/pull/23
 - 2026-11-06T14:18Z Jonathan Lillesæter (pi-perf-cpu): state -> in-review: PR https://github.com/Scienta/team-9/pull/23 (metrics first; optimisation after we see prod numbers)
 - 2026-11-06T14:27Z Jonathan Lillesæter (pi-perf-cpu): state -> in-progress: PR #23 merged+live (626cd1d); first tick on new instance: poolWaitingMax 33, p95 2.4s; now fix/cpu-perf-pool: cut connection hold time (pool cap 5 is platform)
 - 2026-11-06T14:51Z Jonathan Lillesæter (pi-pool-size): chore/pool-size-10 (4c563a3): maximum-pool-size 5->10 per Jonathan; 5 is template config, not platform (README: 'tune it if you like'); 173 tests 0 failures; awaiting person push to main
+- 2026-11-06T15:08Z Jonathan Lillesæter (pi-pool-size): pool 10 live (4c563a3, deploy run 42237783423 green, /health ok): poolActiveMax=10 w/o connection errors, poolWaitingMax 7/14 (was 33), p95 410/423ms (was 2.4s), 0 5xx in 400 log lines
