@@ -3,7 +3,7 @@
 Owner: Espen Myklevoll (claude-espen)
 State: in-review
 Branch: feat/workshop-registration
-PR: https://github.com/Scienta/team-9/pull/9
+PR: https://github.com/Scienta/team-9/pull/13
 
 ## Log
 
@@ -16,3 +16,4 @@ PR: https://github.com/Scienta/team-9/pull/9
 - 2026-11-06T12:55Z Espen Myklevoll (claude-espen): state -> in-review: PR https://github.com/Scienta/team-9/pull/9, 11 decisions to confirm
 - 2026-11-06T13:02Z Espen Myklevoll (claude-espen): decisions: 10 confirmed by Espen, D1 overridden (email domain needs a dot; test failed 201 before fix); retro L6; pushed
 - 2026-11-06T13:14Z Espen Myklevoll (claude-espen): FAULTY workshop-registration/check-2 tick 107: POST /workshops/{id}/registrations on an ACCEPTED LIGHTNING_10 talk -> our 404 (D2), harness rejects; withdrawn workshop 409 passed in the same run. Fixing on fix/workshop-registration-non-workshop
+- 2026-11-06T13:20Z Espen Myklevoll (claude-espen): retro L8: non-workshop talk 404 -> 409 (test failed 404 before fix), PR https://github.com/Scienta/team-9/pull/13 (URGENT, check-2 FAULTY since tick 107)
