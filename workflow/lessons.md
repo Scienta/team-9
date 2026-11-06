@@ -247,8 +247,8 @@ change made so it can't recur silently (with the file changed). Number them `L1`
   nothing makes a PR re-run on top of a main that moved. Locale: `String.format` without a locale.
 - **Should have been caught by:** the merge (an up-to-date branch requirement), and `/build`'s
   local gate run on a non-English machine.
-- **Harness change:** fixed the test (a mocked `RuntimeMetrics`) and the formatting
-  (`Locale.ROOT`). Still needed from a person: branch protection on `main` with "Require branches
+- **Harness change:** the test was fixed in PR #24 (`new RuntimeMetrics(null, 10)`); the formatting
+  uses `Locale.ROOT`. Still needed from a person: branch protection on `main` with "Require branches
   to be up to date before merging" (or a merge queue), so a PR's checks run on the main it lands on.
 
 ## L16: reviewers caught a floating-point stats mean and tests that couldn't tell exact from float rounding (ratings-cr, build)
