@@ -31,6 +31,12 @@ public class RequestLoggingFilter extends OncePerRequestFilter {
     private static final int MAX_BODY = 1000;
     private static final String ERROR_ATTRIBUTE = DefaultErrorAttributes.class.getName() + ".ERROR";
 
+    private final RuntimeMetrics metrics;
+
+    public RequestLoggingFilter(RuntimeMetrics metrics) {
+        this.metrics = metrics;
+    }
+
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getRequestURI();
@@ -40,13 +46,15 @@ public class RequestLoggingFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
-        ContentCachingRequestWrapper req = new ContentCachingRequestWrapper(request, MAX_BODY);
+        // One byte over the limit, so body() can tell a truncated body from one of exactly MAX_BODY bytes.
+        ContentCachingRequestWrapper req = new ContentCachingRequestWrapper(request, MAX_BODY + 1);
         ContentCachingResponseWrapper res = new ContentCachingResponseWrapper(response);
         long start = System.nanoTime();
         try {
             chain.doFilter(req, res);
         } finally {
             long ms = (System.nanoTime() - start) / 1_000_000;
+            metrics.recordRequest(ms);
             int status = res.getStatus();
             String query = request.getQueryString() == null ? "" : "?" + request.getQueryString();
             String line = request.getMethod() + " " + request.getRequestURI() + query + " -> " + status + " (" + ms

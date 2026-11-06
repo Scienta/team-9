@@ -95,6 +95,36 @@ class SpeakersTest {
     }
 
     @Test
+    void aSpeakerLooksUpTheProfileExactlyAsRegistered() throws Exception {
+        String email = "Ada-" + UUID.randomUUID() + "@Example.com";
+        HttpResponse<String> created = http.send(request("POST", "/speakers",
+                "{\"name\":\"Ada Lovelace\",\"email\":\"" + email + "\",\"bio\":\"Analyst\"}"),
+                HttpResponse.BodyHandlers.ofString());
+        assertEquals(201, created.statusCode(), created.body());
+        String id = created.body().replaceAll(".*\"id\":(\\d+).*", "$1");
+
+        HttpResponse<String> found = send("GET", "/speakers/" + id);
+        assertEquals(200, found.statusCode(), found.body());
+        assertEquals("{\"id\":" + id + ",\"name\":\"Ada Lovelace\",\"email\":\"" + email + "\",\"bio\":\"Analyst\"}",
+                found.body());
+        assertEquals(404, send("GET", "/speakers/" + (Long.parseLong(id) + 1000)).statusCode());
+    }
+
+    @Test
+    void updateReturnsTheUpdatedProfile() throws Exception {
+        HttpResponse<String> created = register("Ada", "ada-" + UUID.randomUUID() + "@example.com");
+        String id = created.body().replaceAll(".*\"id\":(\\d+).*", "$1");
+        String email = "countess-" + UUID.randomUUID() + "@example.com";
+        HttpResponse<String> res = http.send(request("PUT", "/speakers/" + id,
+                "{\"name\":\"Ada Lovelace\",\"email\":\"" + email + "\",\"bio\":\"Analyst\"}"),
+                HttpResponse.BodyHandlers.ofString());
+        assertEquals(200, res.statusCode(), res.body());
+        String expected = "{\"id\":" + id + ",\"name\":\"Ada Lovelace\",\"email\":\"" + email + "\",\"bio\":\"Analyst\"}";
+        assertEquals(expected, res.body());
+        assertEquals(expected, send("GET", "/speakers/" + id).body());
+    }
+
+    @Test
     void registrationValidatesNameEmailAndBio() throws Exception {
         String ok = "v-" + UUID.randomUUID() + "@example.com";
         String[] bodies = {

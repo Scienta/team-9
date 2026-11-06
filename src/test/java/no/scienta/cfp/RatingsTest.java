@@ -128,6 +128,24 @@ class RatingsTest {
         assertEquals(400, send("GET", "/talks?sort=title", null).statusCode());
     }
 
+    @Test
+    void aRatingIsEchoedWithTheUsShortUtcTimeAndARerateReplacesIt() throws Exception {
+        long talk = talk(speaker());
+        HttpResponse<String> res = rate(talk, 3, 4);
+        assertEquals(200, res.statusCode(), res.body());
+        assertEquals(String.valueOf(talk), value(res.body(), "talkId"));
+        assertEquals("3", value(res.body(), "reviewerId"));
+        assertEquals("4", value(res.body(), "score"));
+        Matcher shown = Pattern.compile("\"ratedAtDisplay\":\"([^\"]*)\"").matcher(res.body());
+        assertTrue(shown.find(), res.body());
+        assertTrue(shown.group(1).matches("\\d{1,2}/\\d{1,2}/\\d{2}, \\d{1,2}:\\d{2} [AP]M"), shown.group(1));
+
+        assertEquals(200, rate(talk, 3, 2).statusCode());
+        String t = get("/talks/" + talk);
+        assertEquals("1", value(t, "ratingCount"), t);
+        assertEquals("2.0", value(t, "averageRating"), t);
+    }
+
     private long speaker() throws Exception {
         HttpResponse<String> res = send("POST", "/speakers",
                 "{\"name\":\"Reviewer Target\",\"email\":\"r-" + UUID.randomUUID() + "@example.com\"}");
