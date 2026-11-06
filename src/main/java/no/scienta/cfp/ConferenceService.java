@@ -11,9 +11,11 @@ import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -160,6 +162,57 @@ public class ConferenceService {
                 System.currentTimeMillis());
     }
 
+    // Co-speaker mutations lock the talk row, then read membership. That only sees the latest committed
+    // members under READ COMMITTED (a REPEATABLE READ snapshot would predate the lock wait), so the level is
+    // pinned here instead of inherited from the database default. See workflow/co-speakers.md.
+    @Transactional(isolation = Isolation.READ_COMMITTED)
+    public TalkDto addCoSpeaker(long talkId, long speakerId) {
+        try {
+            lockTalk(talkId);
+            getSpeaker(speakerId);
+            TalkDto talk = getTalk(talkId);
+            if (talk.speakerId == speakerId) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "main speaker cannot be a co-speaker");
+            }
+            if (!talk.coSpeakerIds.contains(speakerId)) {
+                if (talk.coSpeakerIds.size() >= 2) {
+                    throw new ResponseStatusException(HttpStatus.CONFLICT, "a talk can have at most 2 co-speakers");
+                }
+                talkDao.addCoSpeaker(talkId, speakerId);
+            }
+            return getTalk(talkId);
+        } catch (DataAccessException e) {
+            throw lockTimeoutOr(e);
+        }
+    }
+
+    @Transactional(isolation = Isolation.READ_COMMITTED)
+    public TalkDto removeCoSpeaker(long talkId, long speakerId) {
+        try {
+            lockTalk(talkId);
+            getSpeaker(speakerId);
+            talkDao.removeCoSpeaker(talkId, speakerId);
+            return getTalk(talkId);
+        } catch (DataAccessException e) {
+            throw lockTimeoutOr(e);
+        }
+    }
+
+    /** Only lock_not_available (55P03) becomes 503; deadlocks, serialization failures etc. propagate unchanged. */
+    private static RuntimeException lockTimeoutOr(DataAccessException e) {
+        if (LockTimeoutException.isLockNotAvailable(e)) {
+            log.warn("co-speaker mutation timed out waiting for talk lock: " + e.getMostSpecificCause().getMessage());
+            return new LockTimeoutException(e);
+        }
+        return e;
+    }
+
+    private void lockTalk(long talkId) {
+        if (!talkDao.lock(talkId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "talk not found");
+        }
+    }
+
     public TalkDto getTalk(long id) {
         TalkDto talk = talkDao.findById(id);
         if (talk == null) {
@@ -216,6 +269,7 @@ public class ConferenceService {
     }
 
     private void addRatings(TalkDto talk) {
+        talk.coSpeakerIds = talkDao.coSpeakerIds(talk.id);
         Map<String, Object> stats = ratingDao.stats(talk.id);
         int count = ((Number) stats.get("cnt")).intValue();
         long total = ((Number) stats.get("total")).longValue();

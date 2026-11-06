@@ -7,6 +7,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @Repository
 public class TalkDao {
@@ -45,6 +46,34 @@ public class TalkDao {
 
     public List<TalkDto> findAll() {
         return jdbc.query("SELECT " + COLUMNS + " FROM talk ORDER BY id", mapper);
+    }
+
+    /**
+     * Locks the talk row for the rest of the current transaction, waiting at most 2 s (then Postgres raises
+     * 55P03 lock_not_available). SET LOCAL, not SET: a session setting would leak to the next pool user.
+     */
+    public boolean lock(long id) {
+        if (!TransactionSynchronizationManager.isActualTransactionActive()) {
+            throw new IllegalStateException("TalkDao.lock needs a transaction");
+        }
+        jdbc.execute("SET LOCAL lock_timeout = '2s'");
+        return !jdbc.queryForList("SELECT id FROM talk WHERE id = ? FOR UPDATE", Long.class, id).isEmpty();
+    }
+
+    public List<Long> coSpeakerIds(long talkId) {
+        return jdbc.queryForList("SELECT speaker_id FROM talk_co_speaker WHERE talk_id = ? ORDER BY added_order",
+                Long.class, talkId);
+    }
+
+    // Call only while holding the talk row lock in a transaction. ON CONFLICT keeps a duplicate a no-op at the
+    // database level too: no error, and the existing row (and its added_order) is left untouched.
+    public void addCoSpeaker(long talkId, long speakerId) {
+        jdbc.update("INSERT INTO talk_co_speaker (talk_id, speaker_id) VALUES (?, ?) "
+                + "ON CONFLICT (talk_id, speaker_id) DO NOTHING", talkId, speakerId);
+    }
+
+    public void removeCoSpeaker(long talkId, long speakerId) {
+        jdbc.update("DELETE FROM talk_co_speaker WHERE talk_id = ? AND speaker_id = ?", talkId, speakerId);
     }
 
     public boolean exists(long id) {

@@ -1,7 +1,9 @@
 package no.scienta.cfp;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 
@@ -15,6 +17,7 @@ public class TalkDto {
     public String format;
     public String level;
     public Long speakerId;
+    public List<Long> coSpeakerIds = new ArrayList<>();
     public Integer durationMinutes;
     public String status;
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss.SSS'+00:00'", timezone = "UTC")

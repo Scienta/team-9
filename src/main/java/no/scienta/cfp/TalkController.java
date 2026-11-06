@@ -5,6 +5,7 @@ import java.util.Map;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -37,6 +38,16 @@ public class TalkController {
     public List<TalkDto> list(@RequestParam(required = false) String sort,
                               @RequestParam(required = false) Long speakerId) {
         return service.listTalks(sort, speakerId);
+    }
+
+    @PutMapping("/talks/{id}/co-speakers/{speakerId}")
+    public TalkDto addCoSpeaker(@PathVariable Long id, @PathVariable Long speakerId) {
+        return service.addCoSpeaker(id, speakerId);
+    }
+
+    @DeleteMapping("/talks/{id}/co-speakers/{speakerId}")
+    public TalkDto removeCoSpeaker(@PathVariable Long id, @PathVariable Long speakerId) {
+        return service.removeCoSpeaker(id, speakerId);
     }
 
     @PutMapping("/talks/{id}/ratings/{reviewerId}")

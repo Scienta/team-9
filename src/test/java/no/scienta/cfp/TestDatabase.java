@@ -21,11 +21,28 @@ final class TestDatabase {
     private TestDatabase() {
     }
 
-    /** Creates an empty database and points the app's datasource at it. */
-    static void fresh(DynamicPropertyRegistry registry) {
+    /** Creates an empty database, points the app's datasource at it and returns its name. */
+    static String fresh(DynamicPropertyRegistry registry) {
         String name = "cfp_" + COUNTER.incrementAndGet();
         createDatabase(name);
         pointAt(registry, POSTGRES, name);
+        return name;
+    }
+
+    /** Runs one admin statement (e.g. ALTER DATABASE) on the container's maintenance database. */
+    static void execute(String sql) {
+        try (Connection c = DriverManager.getConnection(POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword());
+             Statement s = c.createStatement()) {
+            s.execute(sql);
+        } catch (SQLException e) {
+            throw new IllegalStateException("could not run " + sql, e);
+        }
+    }
+
+    /** A raw connection to a test database, outside the app's pool. */
+    static Connection connect(String database) throws SQLException {
+        String url = "jdbc:postgresql://" + POSTGRES.getHost() + ":" + POSTGRES.getMappedPort(5432) + "/" + database;
+        return DriverManager.getConnection(url, POSTGRES.getUsername(), POSTGRES.getPassword());
     }
 
     /** Points the app at a database through the deploy contract's PG* variables, as on Scaleway. */
