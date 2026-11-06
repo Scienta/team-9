@@ -115,7 +115,9 @@ public class ConferenceService {
 
     // ---------------------------------------------------------------- talks
 
-    @Transactional
+    // READ COMMITTED: the load is counted after waiting for the speaker lock, and must see what the previous holder
+    // committed. A REPEATABLE READ default would count from a snapshot taken before the wait (SubmissionCapRepeatableReadTest).
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public TalkDto submitTalk(TalkForm form) {
         if (form.title == null || form.title.trim().isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "title is required");
@@ -150,7 +152,7 @@ public class ConferenceService {
 
         Long id = checkSubmissionLimit(form, duration);
         if (id == null) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "a speaker can submit at most 3 talks");
+            throw atTheCap(form.speakerId);
         }
         Map<String, Object> speaker = speakerDao.findById(form.speakerId);
         notifications.talkSubmitted((String) speaker.get("email"), form.title);
@@ -158,11 +160,21 @@ public class ConferenceService {
     }
 
     /**
-     * Checks that the speaker is below the limit of 3 talks.
+     * Checks that the speaker presents fewer than 3 talks in the running, as main speaker or co-speaker.
      */
     private Long checkSubmissionLimit(TalkForm form, int duration) {
-        return talkDao.insertIfBelow(3, form.title, form.format, duration, form.level, form.speakerId,
+        return talkDao.insertIfBelow(MAX_TALKS, form.title, form.format, duration, form.level, form.speakerId,
                 System.currentTimeMillis());
+    }
+
+    private static final int MAX_TALKS = 3;
+
+    private static ResponseStatusException atTheCap(long speakerId) {
+        return new ResponseStatusException(HttpStatus.CONFLICT, "speaker " + speakerId + " already presents " + MAX_TALKS + " talks");
+    }
+
+    private static boolean inTheRunning(TalkDto talk) {
+        return !"REJECTED".equals(talk.status) && !"WITHDRAWN".equals(talk.status);
     }
 
     // Co-speaker mutations lock the talk row, then read membership. That only sees the latest committed
@@ -180,6 +192,14 @@ public class ConferenceService {
             if (!talk.coSpeakerIds.contains(speakerId)) {
                 if (talk.coSpeakerIds.size() >= 2) {
                     throw new ResponseStatusException(HttpStatus.CONFLICT, "a talk can have at most 2 co-speakers");
+                }
+                // Only the added speaker's load changes (D5), and only while the talk counts (R6). The talk lock keeps
+                // its status fixed; the speaker lock, taken after it, serializes this with the speaker's submissions.
+                if (inTheRunning(talk)) {
+                    talkDao.lockSpeaker(speakerId);
+                    if (talkDao.load(speakerId) >= MAX_TALKS) {
+                        throw atTheCap(speakerId);
+                    }
                 }
                 talkDao.addCoSpeaker(talkId, speakerId);
             }

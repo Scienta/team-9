@@ -252,16 +252,15 @@ class ProgrammeExportTest {
     // of statements, not one or more per row
     @Test
     void fullProgrammeTakesAFixedNumberOfQueries() throws Exception {
-        long co1 = speaker("Co One");
-        long co2 = speaker("Co Two");
         int n = 0;
         for (String slot : new String[] {"S1", "S2", "S3", "S4", "S5"}) {
             for (String room : new String[] {"R1", "R2", "R3"}) {
                 long talk = accepted(speaker("Main " + n), "Talk " + n++, "PRESENTATION");
                 schedule(room, slot, talk);
                 if (room.equals("R1")) { // added after scheduling, so R7 of scheduling doesn't apply
-                    coSpeaker(talk, co1);
-                    coSpeaker(talk, co2);
+                    // New co-speakers per talk: one speaker on 5 talks would be over the 3-talk cap (submission-cap-cr).
+                    coSpeaker(talk, speaker("Co One " + slot));
+                    coSpeaker(talk, speaker("Co Two " + slot));
                 }
             }
         }

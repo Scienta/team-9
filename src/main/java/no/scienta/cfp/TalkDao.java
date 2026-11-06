@@ -124,18 +124,37 @@ public class TalkDao {
         return n != null && n > 0;
     }
 
+    // A speaker's load: the talks in the running (not REJECTED or WITHDRAWN) they present as main speaker or co-speaker.
+    // Computed, not stored, so existing rows count from the first deploy (workflow/specs/submission-cap-cr.md D1, D7).
+    private static final String LOAD = "(SELECT COUNT(*) FROM talk WHERE status IN ('SUBMITTED', 'WAITLISTED', 'ACCEPTED') "
+            + "AND id IN (SELECT id FROM talk WHERE speaker_id = ? UNION SELECT talk_id FROM talk_co_speaker WHERE speaker_id = ?))";
+
     /**
-     * Inserts the talk only if the speaker has fewer than {@code max} talks. Returns the new id, or null.
+     * Locks the speaker row for the rest of the current transaction: every change to a speaker's load (a submission, an
+     * added co-speakership) takes it before counting. Waits as long as the transaction's lock_timeout allows.
+     */
+    public boolean lockSpeaker(long speakerId) {
+        return !jdbc.queryForList("SELECT id FROM speaker WHERE id = ? FOR UPDATE", Long.class, speakerId).isEmpty();
+    }
+
+    /** The speaker's load. Call while holding the speaker lock, under READ COMMITTED, to count what committed before it. */
+    public int load(long speakerId) {
+        Integer n = jdbc.queryForObject("SELECT " + LOAD, Integer.class, speakerId, speakerId);
+        return n == null ? 0 : n;
+    }
+
+    /**
+     * Inserts the talk only if the speaker's load is below {@code max}. Returns the new id, or null.
      * The speaker row is locked first so two submissions for the same speaker can't both see room under the limit.
      */
     @Transactional
     public Long insertIfBelow(int max, String title, String format, int duration, String level, long speakerId, long submittedAt) {
-        jdbc.queryForList("SELECT id FROM speaker WHERE id = ? FOR UPDATE", speakerId);
+        lockSpeaker(speakerId);
         List<Long> ids = jdbc.queryForList(
                 "INSERT INTO talk (title, format, duration, level, status, speaker_id, submitted_at) "
                         + "SELECT ?, ?, ?, ?, 'SUBMITTED', ?, ? "
-                        + "WHERE (SELECT COUNT(*) FROM talk WHERE speaker_id = ?) < ? RETURNING id",
-                Long.class, title, format, duration, level, speakerId, submittedAt, speakerId, max);
+                        + "WHERE " + LOAD + " < ? RETURNING id",
+                Long.class, title, format, duration, level, speakerId, submittedAt, speakerId, speakerId, max);
         return ids.isEmpty() ? null : ids.get(0);
     }
 
