@@ -26,7 +26,7 @@ At the end of every numbered step below, record what happened with
   check removed (lessons.md L10).
 - If the Hurl file takes a shared, limited resource in production (a programme place, a workshop
   seat), it first clears what an earlier failed run may have left there: Hurl stops at the first
-  failed assert and never reaches the cleanup at the end (lessons.md L12).
+  failed assert and never reaches the cleanup at the end (lessons.md L13).
 - Run them and see them fail for the right reason (missing endpoint or wrong value, not a compile
   error elsewhere).
 
@@ -42,7 +42,7 @@ for the gate below (`.claude/rules/build.md`).
 ## 3. Local gates
 
 First `git fetch origin && git merge origin/main`: main's tests and checklist items (and anything
-your branch builds on that has since merged) must be in what you test and review (lessons.md L12).
+your branch builds on that has since merged) must be in what you test and review (lessons.md L13).
 All must pass, and you must have seen them pass:
 - `./mvnw -q package` (all tests, not just yours). A build-cache hit (about 2 s, no tests run;
   without `-q` it prints `Found cached build`) counts: the same inputs passed before. Never pass `-Dtest=` or `-DskipTests` here.

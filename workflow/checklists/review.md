@@ -23,7 +23,7 @@ PR. `/retro` adds items when a review let something through: say where it came f
 - [ ] A list endpoint runs a fixed number of SQL statements however many rows it returns (no query per
       row): add it to `ListQueriesTest`, which counts them (`lessons.md#L11`).
 - [ ] A read that joins tables doesn't drop rows through an inner join on a column without a foreign
-      key, and a Hurl file that takes a shared production resource clears it first (`lessons.md#L12`).
+      key, and a Hurl file that takes a shared production resource clears it first (`lessons.md#L13`).
 - [ ] A framework, server or JDK upgrade: input that never reaches our code still answers as before:
       malformed %-escapes in the query, more than 1000 parameters, an invalid-UTF-8 path, Unicode
       whitespace in validated fields (all in `workflow/bin/diff-upgrade`) (`lessons.md#L7`).
