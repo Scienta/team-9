@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# CI gate: fails while any team spec has a DECISION a person hasn't confirmed. Agents build on
+# suggested defaults; this makes sure a person has looked at every one before it reaches main.
+# Usage: workflow/bin/check-decisions [dir]   (default workflow/specs)
+set -euo pipefail
+dir="${1:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/specs}"
+shopt -s nullglob
+files=("$dir"/*.md)
+if [ ${#files[@]} -eq 0 ]; then echo "No team specs in $dir."; exit 0; fi
+if grep -n 'UNCONFIRMED' "${files[@]}"; then
+  echo
+  echo "These decisions need a person: confirm each (UNCONFIRMED -> CONFIRMED by <name>) or override it."
+  exit 1
+fi
+echo "All decisions in ${#files[@]} team spec(s) are confirmed."

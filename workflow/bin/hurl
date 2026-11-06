@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# Runs hurl if it's installed, else the official Docker image with the same arguments. Host
+# networking so http://localhost:8080 works; the current directory is mounted at the same path so
+# file arguments resolve. Use it as: HURL=workflow/bin/hurl examples/run.sh <url>
+set -euo pipefail
+if command -v hurl >/dev/null; then exec hurl "$@"; fi
+exec docker run --rm --network host -v "$PWD:$PWD" -v /tmp:/tmp -w "$PWD" \
+  ghcr.io/orange-opensource/hurl:7.0.0 "$@"
