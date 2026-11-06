@@ -60,32 +60,32 @@ No response body changes. `/admin/stats` (`speakersWithTalks`) is about main spe
 
 - **D1** Which statuses count? → `SUBMITTED`, `WAITLISTED`, `ACCEPTED` count; `REJECTED` and `WITHDRAWN`
   don't, because the request names exactly those two as "out of the running", and a waitlisted talk can
-  still be accepted. `UNCONFIRMED`
+  still be accepted. `CONFIRMED by Gjermund Karlsen Lie`
 - **D2** `PUT` of a speaker who is already a co-speaker on that talk, while their load is 3 or more →
   no-op 200 with the talk, because the house convention makes a repeated add a no-op, the talk is
   already in their load (nothing new), and the existing order of checks puts the duplicate check before
   the capacity checks. Order: talk 404 → speaker 404 → main speaker 400 → already a co-speaker: 200
   no-op → talk has 2 co-speakers: 409 → talk in the running and speaker load ≥ 3: 409 → add.
   Nothing can make a repeat fail later: a talk only leaves the running, never re-enters (item 13, L10).
-  `UNCONFIRMED`
+  `CONFIRMED by Gjermund Karlsen Lie`
 - **D3** Status for "at the cap" on both endpoints → 409, the house convention for a limit reached and
   what `POST /talks` already answers. Message: `speaker <id> already presents 3 talks` (submit's old
-  message "a speaker can submit at most 3 talks" is replaced; the status is what's checked). `UNCONFIRMED`
+  message "a speaker can submit at most 3 talks" is replaced; the status is what's checked). `CONFIRMED by Gjermund Karlsen Lie`
 - **D4** When both the talk's 2-co-speaker limit and the speaker's cap apply → the talk's limit is
-  checked first; both are 409, only the message differs. `UNCONFIRMED`
+  checked first; both are 409, only the message differs. `CONFIRMED by Gjermund Karlsen Lie`
 - **D5** Whose cap does adding a co-speaker check? → only the added speaker's. The talk is already in
-  the main speaker's and the other co-speakers' load, so nothing changes for them. `UNCONFIRMED`
+  the main speaker's and the other co-speakers' load, so nothing changes for them. `CONFIRMED by Gjermund Karlsen Lie`
 - **D6** Can a talk re-enter the running and push someone over? → No: `REJECTED` and `WITHDRAWN` are
   final (acceptance spec), and every other transition stays inside the running. So decisions and
-  withdrawals never check the cap, and an accept doesn't re-check it. `UNCONFIRMED`
+  withdrawals never check the cap, and an accept doesn't re-check it. `CONFIRMED by Gjermund Karlsen Lie`
 - **D7** Is the load stored or computed? → computed on each check from `talk` and `talk_co_speaker`
   (no counter column), so existing production data (withdrawn talks, old co-speakerships) is counted
-  correctly from the first deploy with no migration, and R8 needs no special case. `UNCONFIRMED`
+  correctly from the first deploy with no migration, and R8 needs no special case. `CONFIRMED by Gjermund Karlsen Lie`
 - **D8** Lock timeout on `POST /talks` → unchanged: no `lock_timeout` on submit (it waits as today),
   while `PUT co-speakers` keeps its 2 s / 503. A 503 on a base-feature submit under a burst risks the
-  talks checks; a submit holds the speaker lock for milliseconds. `UNCONFIRMED`
+  talks checks; a submit holds the speaker lock for milliseconds. `CONFIRMED by Gjermund Karlsen Lie`
 - **D9** Malformed input, unknown ids → unchanged from the talks and co-speakers decisions (400 in the
-  body, 404 in the path). Nothing new is parsed. `UNCONFIRMED`
+  body, 404 in the path). Nothing new is parsed. `CONFIRMED by Gjermund Karlsen Lie`
 
 No business rule is ambiguous enough to need the product owner.
 
