@@ -1,5 +1,7 @@
 package no.scienta.cfp;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -366,7 +368,7 @@ public class ConferenceService {
         Map<String, Integer> byLevel = new LinkedHashMap<>();
         Map<String, Integer> byStatus = new LinkedHashMap<>();
         int minutes = 0;
-        double ratingSum = 0;
+        BigDecimal ratingSum = BigDecimal.ZERO;
         int rated = 0;
         for (TalkDto t : talks) {
             byFormat.put(t.format, byFormat.getOrDefault(t.format, 0) + 1);
@@ -374,7 +376,7 @@ public class ConferenceService {
             byStatus.put(t.status, byStatus.getOrDefault(t.status, 0) + 1);
             minutes += t.durationMinutes;
             if (t.averageRating != null) {
-                ratingSum += t.averageRating;
+                ratingSum = ratingSum.add(BigDecimal.valueOf(t.averageRating));
                 rated++;
             }
         }
@@ -386,7 +388,9 @@ public class ConferenceService {
         stats.put("byLevel", byLevel);
         stats.put("byStatus", byStatus);
         stats.put("totalHours", minutes / 60.0);
-        stats.put("averageRating", rated == 0 ? null : Utils.roundRating(ratingSum / rated));
+        // The exact decimal mean: summed as doubles, a true tie like 1.55 became 1.5499... and rounded down (ratings-cr D2).
+        stats.put("averageRating", rated == 0 ? null
+                : ratingSum.divide(BigDecimal.valueOf(rated), 1, RoundingMode.HALF_UP).doubleValue());
         stats.put("generated", Utils.now());
         return stats;
     }

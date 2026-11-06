@@ -34,7 +34,7 @@ class UtilsTest {
         assertEquals("Workshop", Utils.capitalize("WORKSHOP"));
     }
 
-    // Averages are shown with one decimal, halves rounded up (ratings spec)
+    // One decimal, halves rounded up. No longer used for talk averages (2 decimals, half even: ratings-cr).
     @Test
     void roundsRatingToOneDecimal() {
         assertEquals(4.3, Utils.roundRating(4.25));
