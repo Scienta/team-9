@@ -12,3 +12,4 @@ PR: -
 - 2026-11-06T12:42Z Espen Myklevoll (claude-espen): tests first: WorkshopRegistrationTest 10 tests (2 concurrency), all 10 fail with 404 (no endpoint); examples/workshop-registration.hurl 51 requests
 - 2026-11-06T12:43Z Espen Myklevoll (claude-espen): code: WorkshopController/WorkshopService/RegistrationDao/RegistrationForm + schema; WorkshopRegistrationTest 10/10 pass
 - 2026-11-06T12:44Z Espen Myklevoll (claude-espen): local gates: mvnw package exit 0; Hurl 6 files/106 requests pass locally; launching 3 reviewers
+- 2026-11-06T12:55Z Espen Myklevoll (claude-espen): reviewers: spec 0 bugs/5 gaps+nits, edge 1 bug (NUL name 500)+2 gaps, regress 0 regressions/2 nits; fixed 8 incl. coerced types (D9); retro L5: check-hurl-statuses in /build + CI
