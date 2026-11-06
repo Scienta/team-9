@@ -379,8 +379,10 @@ public class ConferenceService {
 
     @Transactional
     public Map<String, Object> rate(long talkId, long reviewerId, Map<String, Object> body) {
-        if (reviewerId < 1) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "reviewerId must be positive");
+        // The spec allows any positive whole number, but rating.reviewer_id is an INTEGER and widening it would rewrite
+        // the table (schema changes must be additive). 400 beats the 500 the insert would give.
+        if (reviewerId < 1 || reviewerId > Integer.MAX_VALUE) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "reviewerId must be between 1 and " + Integer.MAX_VALUE);
         }
         Object score = body.get("score");
         if (!(score instanceof Integer)) {

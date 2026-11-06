@@ -4,11 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.text.SimpleDateFormat;
 import java.util.Date;
-import java.util.TimeZone;
 
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 class UtilsTest {
@@ -59,11 +56,12 @@ class UtilsTest {
         assertEquals("plain", Utils.csv("plain"));
     }
 
-    @Disabled("flaky on Jenkins")
+    // Was flaky when the clock ticked over a second between the two calls: compare within a window instead.
     @Test
-    void nowIsCurrentTime() {
-        SimpleDateFormat f = new SimpleDateFormat(Utils.DB_DATE_TIME);
-        f.setTimeZone(TimeZone.getTimeZone("UTC"));
-        assertEquals(f.format(new Date()), Utils.now());
+    void nowIsCurrentTimeInUtc() {
+        long before = System.currentTimeMillis() / 1000 * 1000;
+        long now = Utils.parse(Utils.now()).getTime();
+        long after = System.currentTimeMillis();
+        assertTrue(now >= before && now <= after, before + " <= " + now + " <= " + after);
     }
 }

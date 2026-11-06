@@ -74,6 +74,55 @@ class TalksTest {
         assertTrue(res.body().contains("\"durationMinutes\":120"), res.body());
     }
 
+    @Test
+    void durationComesFromTheFormat() throws Exception {
+        String speaker = newSpeaker();
+        String[][] cases = {{"LIGHTNING_10", "10"}, {"LIGHTNING_20", "20"}, {"PRESENTATION", "45"}};
+        for (String[] c : cases) {
+            HttpResponse<String> res = submit("{\"title\":\"T\",\"format\":\"" + c[0]
+                    + "\",\"level\":\"ADVANCED\",\"speakerId\":" + speaker + "}");
+            assertEquals(201, res.statusCode(), res.body());
+            assertTrue(res.body().contains("\"durationMinutes\":" + c[1] + ","), res.body());
+            assertTrue(res.body().contains("\"status\":\"SUBMITTED\""), res.body());
+        }
+    }
+
+    @Test
+    void invalidSubmissionsAreBadRequestAndCreateNothing() throws Exception {
+        String speaker = newSpeaker();
+        String[] bodies = {
+                "{\"format\":\"PRESENTATION\",\"level\":\"BEGINNER\",\"speakerId\":" + speaker + "}",
+                "{\"title\":\"  \",\"format\":\"PRESENTATION\",\"level\":\"BEGINNER\",\"speakerId\":" + speaker + "}",
+                "{\"title\":\"T\",\"level\":\"BEGINNER\",\"speakerId\":" + speaker + "}",
+                "{\"title\":\"T\",\"format\":\"KEYNOTE\",\"level\":\"BEGINNER\",\"speakerId\":" + speaker + "}",
+                "{\"title\":\"T\",\"format\":\"presentation\",\"level\":\"BEGINNER\",\"speakerId\":" + speaker + "}",
+                "{\"title\":\"T\",\"format\":\"PRESENTATION\",\"speakerId\":" + speaker + "}",
+                "{\"title\":\"T\",\"format\":\"PRESENTATION\",\"level\":\"EXPERT\",\"speakerId\":" + speaker + "}",
+                "{\"title\":\"T\",\"format\":\"PRESENTATION\",\"level\":\"BEGINNER\"}",
+                "{\"title\":\"T\",\"format\":\"PRESENTATION\",\"level\":\"BEGINNER\",\"speakerId\":999999}",
+                "{\"title\":\"T\",\"format\":\"PRESENTATION\",\"level\":\"BEGINNER\",\"speakerId\":\"x\"}",
+                "not json",
+        };
+        for (String body : bodies) {
+            HttpResponse<String> res = submit(body);
+            assertEquals(400, res.statusCode(), body + " -> " + res.body());
+        }
+        HttpResponse<String> talks = http.send(request("GET", "/speakers/" + speaker + "/talks", null),
+                HttpResponse.BodyHandlers.ofString());
+        assertEquals("[]", talks.body());
+    }
+
+    @Test
+    void unknownTalkOrSpeakerIsNotFound() throws Exception {
+        assertEquals(404, http.send(request("GET", "/talks/999999", null), HttpResponse.BodyHandlers.ofString()).statusCode());
+        assertEquals(404, http.send(request("GET", "/speakers/999999/talks", null), HttpResponse.BodyHandlers.ofString()).statusCode());
+        assertEquals(400, http.send(request("GET", "/talks/abc", null), HttpResponse.BodyHandlers.ofString()).statusCode());
+    }
+
+    private HttpResponse<String> submit(String json) throws Exception {
+        return http.send(request("POST", "/talks", json), HttpResponse.BodyHandlers.ofString());
+    }
+
     private String newSpeaker() throws Exception {
         HttpResponse<String> res = http.send(request("POST", "/speakers",
                 "{\"name\":\"Grace Hopper\",\"email\":\"grace-" + UUID.randomUUID() + "@example.com\"}"),
