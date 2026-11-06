@@ -25,7 +25,8 @@ class RequestLoggingFilterTest {
     private static final String ERROR_ATTRIBUTE = DefaultErrorAttributes.class.getName() + ".ERROR";
     private static final Pattern LINE = Pattern.compile("(\\S+ \\S+) -> (\\d+) \\((\\d+) ms\\) req=(.*?)( res=(.*))?");
 
-    private final RequestLoggingFilter filter = new RequestLoggingFilter();
+    // No DataSource: recordRequest() only needs the latency buffer.
+    private final RequestLoggingFilter filter = new RequestLoggingFilter(new RuntimeMetrics(null, 10));
 
     @Test
     void logsMethodPathQueryStatusDurationAndBody() throws Exception {
