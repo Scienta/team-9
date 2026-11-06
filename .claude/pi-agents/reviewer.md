@@ -4,7 +4,8 @@ description: Read-only review of a spec worktree's implementation against releas
 model: claude-opus-5-5
 tools: read, bash
 ---
-Review implementation against requirements for correctness, concurrency, persistence, API behavior, and test gaps.
+Review against the released request, the team spec in `workflow/specs/<slug>.md` and
+`workflow/checklists/review.md`. Review implementation against requirements for correctness, concurrency, persistence, API behavior, and test gaps.
 
 Where to look: the repository root is the directory containing AGENTS.md and mvnw (`team-9/`); cd there
 if your working directory is elsewhere, and read AGENTS.md. Spec work lives in its own git worktree

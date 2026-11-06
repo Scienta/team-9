@@ -10,14 +10,18 @@
 # A feature's state, first match wins:
 #   FAULTY            claimed, and at least one harness check is not OK: it's costing points
 #   claimed           claimed, every check OK
-#   merged            a PR from feat/<slug> is merged, not claimed yet: /verify, then a person claims
-#   in-review         an open PR from feat/<slug>; shows how many DECISIONs a person still has to confirm
-#   in-progress       a feat/<slug> branch on origin, no PR yet: someone is on it
+#   merged            workflow/specs/<slug>.md is on origin/main (or a feature PR is merged), not
+#                     claimed yet: /verify, then a person claims
+#   in-review         an open PR from the feature's branch; shows how many DECISIONs are unconfirmed
+#   in-progress       a feature branch on origin, no PR yet, or a watcher task pending/running/
+#                     needs-review in this checkout's .workflow-state/: someone is on it
 #   new               none of the above: /spec then /build (or /drive)
 #   unreleased        the spec answers 404
 #
-# "in-progress" comes from origin, so push your feat/<slug> branch as soon as you start: that's how
-# the other people on the team see you're on it.
+# A feature's branch is any of: spec/<slug>-<hash12> (the convention, .claude/rules/worktrees.md),
+# feat/<slug>, or feature/*<slug>*. Other branches on origin are listed at the end so a person can
+# see work this script can't attribute. Push your branch as soon as you start: that's how the
+# other people on the team see you're on it.
 set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -29,7 +33,17 @@ feedback="$("$h" "/api/teams/$team/feedback")"
 tick="$(jq -r '.tick' <<<"$feedback")"
 
 git fetch -q --prune origin 2>/dev/null || echo "(git fetch failed: branch states may be stale)" >&2
-branches="$(git for-each-ref --format='%(refname:short)' 'refs/remotes/origin/feat/*' | sed 's#^origin/##')"
+branches="$(git for-each-ref --format='%(refname:short)' refs/remotes/origin | sed 's#^origin/##' | grep -vx -e HEAD -e main -e origin || true)"
+attributed=""
+# The branches belonging to a feature, one per line.
+feature_branches() {
+  grep -E "^(spec/$1-[0-9a-f]{12}|feat/$1|feature/.*$1.*)\$" <<<"$branches" || true
+}
+# The local watcher's tasks (workflow/watch_specs.py): "<slug> <status>" for unfinished ones.
+watcher_tasks=""
+if [ -f .workflow-state/state.json ]; then
+  watcher_tasks="$(jq -r '.tasks[] | select(.status | IN("pending","running","needs-review","failed","timed-out","interrupted")) | "\(.slug) \(.status)"' .workflow-state/state.json 2>/dev/null || true)"
+fi
 open_prs="" merged_prs=""
 if command -v gh >/dev/null && gh auth status >/dev/null 2>&1; then
   open_prs="$(gh pr list --state open --limit 100 --json headRefName,number --jq '.[] | "\(.headRefName) #\(.number)"')"
@@ -61,22 +75,35 @@ while IFS=$'\t' read -r slug claimed bad; do
     fi
   fi
   kind="$(grep -m1 -i '^Kind:' "$spec" | grep -qi drip && echo drip || echo base)"
-  pr_open="$(awk -v b="feat/$slug" '$1==b {print $2; exit}' <<<"$open_prs")"
-  pr_merged="$(awk -v b="feat/$slug" '$1==b {print $2; exit}' <<<"$merged_prs")"
+  mine="$(feature_branches "$slug")"
+  attributed="$attributed"$'\n'"$mine"
+  pr_open="" pr_merged="" pr_branch=""
+  while read -r b; do
+    [ -n "$b" ] || continue
+    o="$(awk -v b="$b" '$1==b {print $2; exit}' <<<"$open_prs")"
+    if [ -n "$o" ] && [ -z "$pr_open" ]; then pr_open="$o" pr_branch="$b"; fi
+  done <<<"$mine"
+  for b in $(grep -E "^(spec/$slug-[0-9a-f]{12}|feat/$slug|feature/.*$slug.*) " <<<"$merged_prs" | awk '{print $1}'); do
+    pr_merged="${pr_merged:-$(awk -v b="$b" '$1==b {print $2; exit}' <<<"$merged_prs")}"
+  done
+  on_main="$(git cat-file -e "origin/main:workflow/specs/$slug.md" 2>/dev/null && echo yes || true)"
+  watcher="$(awk -v s="$slug" '$1==s {print $2; exit}' <<<"$watcher_tasks")"
 
   if [ "$claimed" = true ] && [ "$bad" -gt 0 ]; then
     state=FAULTY detail="$bad check(s) not OK: /retro $slug"
     suggest_faulty="${suggest_faulty:-$slug}"
   elif [ "$claimed" = true ]; then
     state=claimed detail="all checks OK"
-  elif [ -n "$pr_merged" ]; then
-    state=merged detail="PR $pr_merged merged: /verify $slug, then a person claims"
+  elif [ -n "$on_main" ] || [ -n "$pr_merged" ]; then
+    state=merged detail="${pr_merged:+PR $pr_merged }on main: /verify $slug, then a person claims"
     suggest_merged="${suggest_merged:-$slug}"
   elif [ -n "$pr_open" ]; then
-    open_d="$(git show "origin/feat/$slug:workflow/specs/$slug.md" 2>/dev/null | grep -c UNCONFIRMED || true)"
-    state=in-review detail="PR $pr_open waiting for a person's review, ${open_d:-0} decision(s) to confirm"
-  elif grep -qx "feat/$slug" <<<"$branches"; then
-    state=in-progress detail="branch feat/$slug on origin"
+    open_d="$(git show "origin/$pr_branch:workflow/specs/$slug.md" 2>/dev/null | grep -c UNCONFIRMED || true)"
+    state=in-review detail="PR $pr_open ($pr_branch) waiting for review, ${open_d:-0} decision(s) to confirm"
+  elif [ -n "$mine" ]; then
+    state=in-progress detail="branch $(tr '\n' ' ' <<<"$mine")on origin"
+  elif [ -n "$watcher" ]; then
+    state=in-progress detail="watcher task $watcher (.workflow-state/state.json)"
   else
     state=new detail="/spec $slug"
     suggest_new="${suggest_new:-$slug}"
@@ -86,6 +113,8 @@ done < <(jq -r '.features[] | [.slug, .claimed, ([.checks[]? | select(.status !=
 
 echo
 echo "Tick $tick. Score: $(jq -r '.score | "\(.total) (earned \(.earned), bled \(.bled))"' <<<"$feedback")$(jq -r 'if .down.current then ", SERVICE DOWN: \(.down.reason)" else "" end' <<<"$feedback")"
+others="$(grep -vxF -f <(grep -v '^$' <<<"$attributed"; echo __none__) <<<"$branches" | grep -v '^$' || true)"
+if [ -n "$others" ]; then echo "Other branches on origin (not matched to a feature, check by hand): $(tr '\n' ' ' <<<"$others")"; fi
 if [ -n "$changed" ]; then echo "Specs changed since last fetch:$changed  (check what we built against them)"; fi
 if [ -n "$suggest_faulty" ]; then
   echo "Suggested: /retro $suggest_faulty  (a claimed feature is failing checks and costing points)"

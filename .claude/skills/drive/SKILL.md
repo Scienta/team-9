@@ -25,8 +25,10 @@ most valuable thing, does it fully, reports, and ends. The person's only jobs ar
    5. **A feature is claimed but its row in the `REVIEW.md` claim log (section 3) doesn't say
       `claimed`**: `/verify <slug>` (it reads harness feedback), the short post-claim `/retro`, and
       update the row in the same PR.
-   6. **A new feature nobody is on**: `/spec <slug>`, then `/build <slug>`, ending with a PR.
-   7. Nothing: report "idle" with the `bin/next` table.
+   6. **A watcher task is `needs-review`** (`.workflow-state/state.json`): `/build <slug>` from step
+      3 in its worktree, so the Pi worker's output gets the same gates, reviewers and PR.
+   7. **A new feature nobody is on**: `/spec <slug>`, then `/build <slug>`, ending with a PR.
+   8. Nothing: report "idle" with the `bin/next` table.
 
 2. **Report** in a few lines: what you did, links to PRs, what's waiting on a person (PRs to
    review, decisions to confirm, features to claim). If the PushNotification tool is available, send
@@ -40,9 +42,14 @@ most valuable thing, does it fully, reports, and ends. The person's only jobs ar
 
 ## Guard rails
 
-- Run the loop in its own git worktree or clone (`git worktree add ../team-9-drive origin/main`),
-  never in a checkout a person is working in: it switches branches.
-- One feature at a time per loop. Before starting one, check `origin/feat/<slug>` doesn't exist.
+- Only one autopilot at a time: don't run `/loop /drive` while `workflow/watch_specs.py --run` is
+  running (check `.workflow-state/watcher.pid` and `pgrep -f watch_specs.py`), or both build the
+  same feature. The watcher without `--run` only discovers, and is fine.
+- Every feature gets its own worktree (`/spec` makes it), so the loop never switches branches in
+  the checkout a person is working in.
+- One feature at a time per loop. `bin/next` shows what's taken (branches on origin, watcher tasks).
+- Merges deploy, and a deploy restarts the app for ~40 s, failing every harness check that lands
+  then (lessons.md L3). When several PRs are ready, tell the person so they can merge them together.
 - Never push to `main`, merge, or claim. Never print the harness token.
 - If the same step fails twice in a row, stop the loop and tell the person what's stuck, rather
   than retrying forever.

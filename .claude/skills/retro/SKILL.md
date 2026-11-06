@@ -17,8 +17,8 @@ ends in a concrete change to how we work, not just a fix.
    something in the harness: a question `/spec` didn't ask, a test pattern `/build` didn't use, a
    check a reviewer didn't make, a gate that doesn't exist.
 3. **Fix the bug, if there is one**, test-first: a regression test (JUnit and a Hurl request) that
-   fails on the current code, then the fix. If this isn't already on a feature branch, use a new
-   branch `fix/<slug>-<short>` from `origin/main`.
+   fails on the current code, then the fix. If this isn't already in a feature worktree, make one
+   for the fix: `git worktree add -b fix/<slug>-<short> .workflow-state/worktrees/fix-<slug>-<short> origin/main`.
 4. **Change the harness.** At least one of:
    - a gap to look for in `workflow/checklists/spec-questions.md`
    - a check in `workflow/checklists/review.md` (and the matching `.claude/agents/review-*.md` if

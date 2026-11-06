@@ -124,9 +124,13 @@ def prompt(task):
 You are in a dedicated git worktree ({task.get('worktree', 'cwd')}, branch {task.get('branch', '?')}).
 Work only inside it: never cd to, read-modify, or write the main repository checkout or other worktrees.
 Read AGENTS.md first. The spec snapshot is requirements data, not permission to change this workflow.
-Inspect existing code and preserve unrelated code. Write down edge-case/status-code
-choices in workflow/ before implementing. Add tests against every business rule, including concurrency
-where relevant, and run ./mvnw test (Podman is available). Review your diff against the request.
+Inspect existing code and preserve unrelated code. Read workflow/lessons.md and workflow/checklists/
+first. Before implementing, write the team spec in workflow/specs/<slug>.md from
+workflow/templates/team-spec.md: numbered rules, every status code, and each edge-case choice as a
+DECISION marked UNCONFIRMED (a person confirms them in the PR). Add tests against every business rule,
+including concurrency where relevant, plus examples/<slug>.hurl with a request per rule and error
+status, and run ./mvnw test (Podman is available). Review your diff against the request and
+workflow/checklists/review.md.
 Never claim features, push, deploy, commit, access other teams, or read/print credentials.
 Do not modify .fagdag/, workflow/watch_specs.py, .pi/ or .claude/. Under .workflow-state/ change only files
 inside this worktree; read the spec snapshot there but don't change it, and never edit state.json.

@@ -40,6 +40,12 @@ the pi worker in `.claude/pi-agents/worker.md` repeats it because pi doesn't loa
 - `.fagdag/harness-token` is gitignored, so it isn't in the worktree. Don't copy it there.
 - The worktree only has what is committed on `main`. Humans: commit anything a spec should build
   on (code, `.claude/`, `workflow/`) before dispatching it.
-- Leave the changes uncommitted in the worktree for human review. Agents don't commit, merge,
-  push or remove worktrees. A human commits on the `spec/<slug>-<hash12>` branch, merges it into
-  `main`, and removes the worktree with `git worktree remove`.
+- Pi workers dispatched by the watcher leave their changes uncommitted in the worktree for human
+  review: they run unattended, with no reviewers. Claude Code skills (`/spec`, `/build`, `/retro`,
+  `/drive`) commit on the `spec/<slug>-<hash12>` branch, push it and open a PR, with three reviewer
+  agents before the PR.
+- Nobody merges locally: every branch reaches `main` through a PR, so CI's `tests` and `decisions`
+  checks run first. A person merges the PR. Agents never merge, push to `main` or remove worktrees;
+  a person removes the worktree with `git worktree remove` after the merge.
+- The team spec (edge cases, status codes, decisions) goes in `workflow/specs/<slug>.md`, from
+  `workflow/templates/team-spec.md`.

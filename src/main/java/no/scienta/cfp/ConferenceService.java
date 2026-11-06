@@ -164,7 +164,7 @@ public class ConferenceService {
 
     // Co-speaker mutations lock the talk row, then read membership. That only sees the latest committed
     // members under READ COMMITTED (a REPEATABLE READ snapshot would predate the lock wait), so the level is
-    // pinned here instead of inherited from the database default. See workflow/co-speakers.md.
+    // pinned here instead of inherited from the database default. See workflow/specs/co-speakers.md.
     @Transactional(isolation = Isolation.READ_COMMITTED)
     public TalkDto addCoSpeaker(long talkId, long speakerId) {
         try {

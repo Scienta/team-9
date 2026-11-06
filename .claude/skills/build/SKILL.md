@@ -1,11 +1,14 @@
 ---
 name: build
-description: Implement a feature from its team spec on branch feat/<slug> - tests first, code, local gates, three parallel reviewer subagents, fixes, lessons, then a PR for a person. Use after /spec.
+description: Implement a feature from its team spec in its spec/<slug>-<hash12> worktree - tests first, code, local gates, three parallel reviewer subagents, fixes, lessons, then a PR for a person. Use after /spec.
 ---
 
 # /build <slug>
 
-Precondition: you're on `feat/<slug>` and `workflow/specs/<slug>.md` exists. Read it, plus
+Precondition: you're in the feature's worktree (`.workflow-state/worktrees/<slug>-<hash12>`, branch
+`spec/<slug>-<hash12>`, made by `/spec`) and `workflow/specs/<slug>.md` exists there. If the watcher's
+Pi worker built it (uncommitted changes in its worktree, task status `needs-review`), start at step 3:
+commit its work first (`feat(<slug>): Pi worker implementation`), then run the gates and reviewers. Read it, plus
 `workflow/lessons.md` and `workflow/checklists/review.md`, before writing anything.
 
 ## 1. Tests first

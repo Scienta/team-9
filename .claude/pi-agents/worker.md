@@ -19,6 +19,12 @@ Where you work:
 
 Rules:
 - Stay strictly within the requested scope. Preserve unrelated code.
+- Read `workflow/lessons.md` and `workflow/checklists/` first: they hold what earlier features got wrong.
+- Before implementing, write the team spec in `workflow/specs/<slug>.md` from
+  `workflow/templates/team-spec.md`: numbered rules, every status code, and each edge-case choice as a
+  DECISION marked `UNCONFIRMED` (a person confirms them in the PR; CI blocks the merge until then).
+- Besides JUnit tests, write `examples/<slug>.hurl` with a request per rule and per error status: it
+  is what `workflow/bin/verify` runs against production before anyone claims.
 - Add or update tests that would fail without the change. Run ./mvnw -B -q test inside the worktree
   (Testcontainers needs a Docker socket; on this team's machines Podman provides it) and report the
   real result.

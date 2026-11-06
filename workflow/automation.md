@@ -1,5 +1,11 @@
 # Released-spec watcher
 
+One of two ways to run agents on features; see `workflow/README.md` for the other (Claude Code
+skills and `/loop /drive`). Both use the same worktrees and branches (`.claude/rules/worktrees.md`),
+the same team spec (`workflow/specs/<slug>.md`), and end in a PR through CI. **Run only one
+autopilot at a time**: `watch_specs.py --run` or `/loop /drive`, not both, or both build the same
+feature. Discovery-only (`watch_specs.py` without `--run`) is safe alongside either.
+
 ## What it does
 
 `watch_specs.py` polls the authenticated harness `/specs` index and downloads each
@@ -105,14 +111,22 @@ agent's evidence and run the tests yourself before deployment/claiming. Other
 pending features may proceed without waiting for human acceptance. Each one is in
 its own worktree, so review each spec's diff separately:
 
+The quickest way is Claude Code's `/build <slug>` inside the worktree: it commits the Pi worker's
+output, runs the gates and the three reviewer agents, fixes what they find, and opens the PR. By hand:
+
 ```sh
 cd .workflow-state/worktrees/<slug>-<hash12>
 git status && git diff            # the agent's uncommitted work
 ./mvnw test
-git add -A && git commit -m "feat: <slug>"
-cd - && git merge spec/<slug>-<hash12>   # from the main checkout, then deploy by pushing main
-git worktree remove .workflow-state/worktrees/<slug>-<hash12>
+git add -A && git commit -m "feat(<slug>): <feature name>"
+git push -u origin spec/<slug>-<hash12>
+gh pr create --fill               # CI runs tests and check-decisions; a person reviews and merges
+# after the merge:
+cd - && git worktree remove .workflow-state/worktrees/<slug>-<hash12>
 ```
+
+Don't merge locally and push `main`: that skips CI's `tests` and `decisions` checks, and every
+push to `main` deploys (with ~40 s of downtime, `workflow/lessons.md` L3).
 
 Setting a failed task back to `pending` reuses its existing worktree and branch,
 so the retry continues from the partial changes. Remove the worktree and the branch

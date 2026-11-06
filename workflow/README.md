@@ -14,7 +14,7 @@ folder has the process, templates, checklists, lessons and scripts.
    /spec  ─┤  feature request → team spec (workflow/specs/<slug>.md): rules, endpoints, status codes,
           │  edge cases. Every gap is a DECISION with a suggested default, marked UNCONFIRMED.
           │
-   /build ─┤  branch feat/<slug>, tests first (JUnit + examples/<slug>.hurl), then code,
+   /build ─┤  worktree spec/<slug>-<hash12>, tests first (JUnit + examples/<slug>.hurl), then code,
           │  ./mvnw package, Hurl against a local app,
           │  3 reviewer subagents in parallel → fix findings → each finding becomes a lesson,
           │  PR with the UNCONFIRMED decisions listed for the reviewer
@@ -43,6 +43,24 @@ a person is needed: the PR review and the claim.
 | Evidence | [`/verify`](../.claude/skills/verify/SKILL.md) | [`bin/verify`](bin/verify) | claim log in `REVIEW.md` |
 | Learn | [`/retro`](../.claude/skills/retro/SKILL.md) | | [`lessons.md`](lessons.md), checklists, rules, skills |
 | Autopilot | [`/drive`](../.claude/skills/drive/SKILL.md) | | all of the above |
+
+## Two ways to run agents, one pipeline
+
+| | Claude Code skills | Watcher + Pi workers |
+|---|---|---|
+| Start | `/next`, `/spec`, `/build` by hand, or `/loop /drive` | `python3 workflow/watch_specs.py --run` ([automation.md](automation.md)) |
+| Finds specs by | the feedback API (`bin/next`) | the `/specs` index |
+| Works in | `.workflow-state/worktrees/<slug>-<hash12>`, branch `spec/<slug>-<hash12>` ([worktrees.md](../.claude/rules/worktrees.md)) | the same |
+| Team spec | `workflow/specs/<slug>.md` | the same |
+| Hands over | a PR, after 3 reviewer agents | uncommitted work; `/build <slug>` in the worktree turns it into a PR |
+| Into `main` | a person merges the PR after CI | the same |
+
+Run only one autopilot at a time (`/loop /drive` or `watch_specs.py --run`), or both build the
+same feature. `bin/next` shows branches on origin and the watcher's local tasks, so both kinds of
+work are visible to everyone.
+
+Merging deploys, and a deploy restarts the app for ~40 s: every harness check landing in that
+window fails ([lessons.md](lessons.md) L3). Merge ready PRs together rather than one at a time.
 
 ## Who decides what
 

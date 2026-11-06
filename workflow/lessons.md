@@ -24,3 +24,29 @@ change made so it can't recur silently (with the file changed). Number them `L1`
 - **Should have been caught by:** writing the check.
 - **Harness change:** rule in `.claude/rules/workflow.md`: a new check must be shown to detect a
   known-bad input before its OK is trusted.
+
+## L3: each deploy failed every claimed feature's checks for a tick (tick 39 and 42)
+
+- **What happened:** two merges three minutes apart (PR #1, then Co-speakers) each restarted the
+  container. Startup takes ~37 s (`Started CfpApplication in 36.964 seconds`), and harness checks
+  that landed then got no response (`status: null` on `POST /speakers`). Six checks across
+  speakers, talks and ratings went FAULTY; 9 points bled. They recovered on the next tick.
+- **Root cause:** every push to `main` deploys with downtime, and nothing in the workflow treated a
+  merge as costly.
+- **Should have been caught by:** the workflow design (merging).
+- **Harness change:** `workflow/README.md` and `.claude/skills/drive/SKILL.md`: merge ready PRs
+  together; `/drive` tells the person when several are ready. Follow-up worth a PR of its own:
+  cut startup time (the app loads `spring-boot-starter-data-jpa` without using JPA).
+
+## L4: two people built two automations for the same job without knowing (tick 30-42)
+
+- **What happened:** the Claude Code skills (`/next` … `/drive`) and the Pi watcher
+  (`watch_specs.py`) were built in parallel with different branch names (`feat/<slug>`,
+  `spec/<slug>-<hash12>`, and a hand-made `feature/spec-2-acceptans`), team-spec locations and
+  merge paths. `bin/next` couldn't see the watcher's or the hand-made branches, so it called
+  co-speakers and acceptance "new" while both were taken or done.
+- **Root cause:** no single place said what a feature's branch and spec are called.
+- **Should have been caught by:** setup.
+- **Harness change:** one convention, in `.claude/rules/worktrees.md`, used by both automations;
+  `bin/next` recognises every branch form, the watcher's state and team specs on `main`, and lists
+  branches it can't attribute so a person sees them.
