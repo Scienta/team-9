@@ -6,3 +6,5 @@ target/
 .idea/
 *.iml
 .fagdag/harness-token
+.workflow-state/
+__pycache__/
