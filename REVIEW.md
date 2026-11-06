@@ -62,19 +62,30 @@ reviewers. Our own scripts are tested too, including a check that each test fail
 input (lessons.md L2). `test_work.py` runs four agents racing for the same feature (exactly one
 wins) and four writing at once (no line lost) against a throwaway remote.
 
-<!-- Who or what reviewed the agents' work (people, review agents, tests, Hurl examples, gates in
-the deploy workflow), and against what (the spec, its examples, your own checks). -->
+What the reviewer agents caught before the harness could (each is a lesson and a checklist item):
+a scheduling no-op that an earlier check rejected (L10); a dropped row from an inner join, and a
+Hurl file that could leave production places booked, in programme-export (L14); a floating-point
+mean that turned a 1.55 tie into 1.5 in ratings-cr (L16); and an untested new lock, plus a test for
+it that also passed with the lock removed, in submission-cap-cr (L17).
 
 ## 3. Claim log
 
-No new claims made during preparation. Harness feedback reports speakers, talks and ratings as
-base features already claimed at tick 0. Agents do not claim features.
+A person claims on the harness; agents only gather the evidence. Status from harness feedback at
+tick 218 (score 1997.9: 2219.97 earned, 222.07 bled).
+
+| Feature | Claimed (tick) | Evidence before or after the claim | Checks at tick 218 |
+|---|---|---|---|
+| speakers, talks, ratings | 0 (base) | already claimed at the start | all OK |
+| co-speakers | 46 | check-1 FAULTY 46-60; PR #4 deployed (a3aa8fb), `bin/verify` 5 Hurl files/55 requests, OK from tick 61 | all OK |
+| acceptance | 65 | check-4 FAULTY now and then from tick 68 (`speakerId: 1.5`); fixed by PR #10 (234af5b) | all OK |
+| workshop-registration | 106 | check-2 FAULTY 107-133; PRs #13 and #16 deployed (e209c4e), `bin/verify` 7 files/132 requests, OK from tick 134 | **check-4 FAULTY** (see section 4) |
+| spring-boot-4 | 113 | PR #11 (9df15ac) live: `/actuator/info` Java 25.0.5, Boot 4.1.2; check-1/2 OK at tick 114 | all OK |
+| scheduling | 139 | check-1 FAULTY from 140 (L12), again from 148 (L13); fixed by PRs #18 and #22 | all OK now; check-6 was FAULTY at ticks 206 and 212 |
+| programme-export | 159 | PR #19 (de6e506) | all OK |
+| ratings-cr | 207 | PR #25 (45973ea) | all OK |
+| submission-cap-cr | 214 | PR #26 (8d7d5d4) | **check-4 FAULTY** at tick 218 |
 
 ## 4. What the harness caught that we didn't
-
-No new deployment or claim yet, so no new harness failure evidence. Pre-game feedback was not
-used as proof of full conformance. Local inspection found email validation and exact timestamp
-formatting gaps; partial fixes are in the working tree, pending regression coverage and review.
 
 **co-speakers/check-1, FAULTY from the claim at tick 46 until the fix deployed.** The harness
 removed a co-speaker, then sent the same `DELETE` again; we answered 200 (a no-op), and the
@@ -104,13 +115,25 @@ doesn't exist, got 404 from us. Our D3 had used the house convention's exception
 that is "the subject of the action". The harness wants 400, as for `POST /talks` with an unknown
 `speakerId`. The exception is gone from the convention ([lessons.md](workflow/lessons.md) L13).
 
-**workshop-registration/check-4 and scheduling/check-6, FAULTY now and then (ticks 144-213).** The
-harness's rushes got through our locks: production stored 21 registrations for a 20-seat workshop,
-and put one speaker's two talks in the same slot. Locally every rush held. Production's database
-starts transactions at REPEATABLE READ, and the driver's `setTransactionIsolation` (a session `SET`)
-doesn't reach the transaction through the pooler, so after a lock wait the read saw the old
-snapshot. `TransactionConfig` now sets the level inside each transaction, and `PooledIsolationTest`
-runs the rushes the way production does ([lessons.md](workflow/lessons.md) L18).
+**workshop-registration/check-4 and scheduling/check-6: races under load, from tick 176.** The
+harness sends many requests at once. Production stored 21 registrations for a 20-seat workshop
+(ticks 176-213), and placed one speaker twice in the same slot (ticks 206, 212). Every request
+locks the row first (`SELECT … FOR UPDATE`), and our tests passed, but after waiting for the lock,
+production counted from a stale snapshot. Production's database starts transactions at REPEATABLE
+READ; we set `READ COMMITTED` per session (the driver's `setTransactionIsolation`), and that doesn't
+reach the transaction through the platform's connection pooler. Local Postgres has no pooler, so our
+tests didn't show it; review-edge confirmed it on a real pgbouncer (39 of 200 transactions at
+REPEATABLE READ with the old setup, 0 with the fix). AGENTS.md warned about session `SET` leaking
+through the pool, but no checklist asked what that does to isolation. `TransactionConfig` now sets
+the level inside each transaction, and `PooledIsolationTest` runs every lock-guarded limit the way
+production does ([lessons.md](workflow/lessons.md) L18).
+
+**submission-cap-cr/check-4, FAULTY at tick 218, four ticks after the claim.** In a burst of
+requests for one speaker at the cap, `PUT /talks/9656/co-speakers/9572` answered 200 while the
+requests either side of it answered 409 "already presents 3 talks". The same stale read:
+`PooledIsolationTest#submissionAndCoSpeakingRaceNeverExceedTheLoad` races submissions against
+co-speaker invitations for one speaker, and without the fix 6 of 1 got through (a load of 8 of 3);
+with it exactly one does (L18).
 
 ## 5. Reusable artifacts
 
@@ -128,5 +151,8 @@ runs the rushes the way production does ([lessons.md](workflow/lessons.md) L18).
 
 ## 6. One thing we'd do differently
 
-Make tests a pre-deployment gate rather than running them after deployment. The inherited pipeline
-can deploy regressions even when tests fail; changing that gate remains a separate follow-up.
+Test against production's database setup, connection pooler included, from the start. The
+checks we lost after tick 170 were races that passed locally, where Postgres has no pooler
+(section 4). We added a test gate before deploy early (PR #2), but L15 showed it still checks each
+PR against an old main: two green PRs merged into a main that didn't compile. We'd also turn on
+"require branches to be up to date" on `main` from t = 0.
