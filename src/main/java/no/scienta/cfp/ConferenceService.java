@@ -173,8 +173,9 @@ public class ConferenceService {
         return new ResponseStatusException(HttpStatus.CONFLICT, "speaker " + speakerId + " already presents " + MAX_TALKS + " talks");
     }
 
+    // The same statuses as TalkDao's load query, so a talk that doesn't count there never refuses a co-speaker here.
     private static boolean inTheRunning(TalkDto talk) {
-        return !"REJECTED".equals(talk.status) && !"WITHDRAWN".equals(talk.status);
+        return TalkDao.IN_THE_RUNNING.contains(talk.status);
     }
 
     // Co-speaker mutations lock the talk row, then read membership. That only sees the latest committed

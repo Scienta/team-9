@@ -38,6 +38,12 @@ from (`lessons.md#L<n>`).
     foreign key (`talk.speaker_id` isn't)? If not, an inner join silently drops the row when the
     other side is missing. Decide what the row shows instead, and use a `LEFT JOIN` (lessons.md L13).
 
+15. **Change requests.** Which rules in earlier team specs (`workflow/specs/`, `workflow/*.md`) does
+    the request replace? Name each one, update that file in the same branch, and find the old tests
+    and Hurl files that assert the old rule (lessons.md L14).
+16. **New locks.** Every row lock the feature adds: what times out, and with which status? Each new
+    lock needs a test that holds exactly that lock and sees the timeout (lessons.md L14).
+
 ## House conventions
 
 Our default answers, so every feature behaves the same way. A DECISION that follows one says so.

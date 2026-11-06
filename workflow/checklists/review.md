@@ -6,7 +6,9 @@ PR. `/retro` adds items when a review let something through: say where it came f
 ## Spec conformance (`review-spec`)
 
 - [ ] Every rule in the team spec has code that implements it and a test that would fail without it.
-- [ ] Every DECISION is implemented as written, and tested.
+- [ ] Every DECISION is implemented as written, and tested in the case it's about (a decision about
+      speakers *over* a limit needs a test above it, not at it) (`lessons.md#L14`).
+- [ ] A change request: every earlier team spec it replaces is updated in this branch (`lessons.md#L14`).
 - [ ] Every endpoint in the request exists with the exact path, method and JSON field names.
 - [ ] Every status code in the team spec's API table is produced, and none other.
 - [ ] `examples/<slug>.hurl` has a request per rule and per error status (`workflow/bin/check-hurl-statuses`
@@ -19,6 +21,10 @@ PR. `/retro` adds items when a review let something through: say where it came f
 - [ ] A rejected request changes nothing in the database.
 - [ ] Limits and state transitions hold under concurrent requests: row lock (`SELECT … FOR UPDATE`)
       or conditional write, inside one transaction. No advisory locks, no session `SET`.
+- [ ] Every new row lock has a timeout test that would pass without the lock removed only if it's wrong:
+      hold a lock mode that blocks the new lock but not the foreign-key checks of the same request
+      (`FOR NO KEY UPDATE` against a new `FOR UPDATE`), and show the test failing with the lock removed (`lessons.md#L14`).
+- [ ] A status set ("in the running", "open") is defined once and shared by the Java check and the SQL (`lessons.md#L14`).
 - [ ] No more than 5 DB connections needed per request path; no connection held during slow work.
 - [ ] A list endpoint runs a fixed number of SQL statements however many rows it returns (no query per
       row): add it to `ListQueriesTest`, which counts them (`lessons.md#L11`).

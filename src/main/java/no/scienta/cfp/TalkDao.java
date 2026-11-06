@@ -126,7 +126,8 @@ public class TalkDao {
 
     // A speaker's load: the talks in the running (not REJECTED or WITHDRAWN) they present as main speaker or co-speaker.
     // Computed, not stored, so existing rows count from the first deploy (workflow/specs/submission-cap-cr.md D1, D7).
-    private static final String LOAD = "(SELECT COUNT(*) FROM talk WHERE status IN ('SUBMITTED', 'WAITLISTED', 'ACCEPTED') "
+    static final List<String> IN_THE_RUNNING = List.of("SUBMITTED", "WAITLISTED", "ACCEPTED");
+    private static final String LOAD = "(SELECT COUNT(*) FROM talk WHERE status IN ('" + String.join("', '", IN_THE_RUNNING) + "') "
             + "AND id IN (SELECT id FROM talk WHERE speaker_id = ? UNION SELECT talk_id FROM talk_co_speaker WHERE speaker_id = ?))";
 
     /**

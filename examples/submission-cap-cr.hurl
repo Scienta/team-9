@@ -133,6 +133,53 @@ POST {{base_url}}/talks
 { "title": "Own four", "format": "PRESENTATION", "level": "BEGINNER", "speakerId": {{s}} }
 HTTP 201
 
+# R2: the committee rejecting a talk frees its co-speaker's place too (c presents 3, one co-speakership is rejected)
+POST {{base_url}}/speakers
+{ "name": "Co Speaker", "email": "cap-c-{{newUuid}}@example.com" }
+HTTP 201
+[Captures]
+c: jsonpath "$.id"
+
+POST {{base_url}}/speakers
+{ "name": "Main Five", "email": "cap-m5-{{newUuid}}@example.com" }
+HTTP 201
+[Captures]
+m5: jsonpath "$.id"
+
+POST {{base_url}}/talks
+{ "title": "Five", "format": "PRESENTATION", "level": "BEGINNER", "speakerId": {{m5}} }
+HTTP 201
+[Captures]
+t5: jsonpath "$.id"
+
+POST {{base_url}}/talks
+{ "title": "Six", "format": "PRESENTATION", "level": "BEGINNER", "speakerId": {{m5}} }
+HTTP 201
+[Captures]
+t6: jsonpath "$.id"
+
+PUT {{base_url}}/talks/{{t5}}/co-speakers/{{c}}
+HTTP 200
+
+PUT {{base_url}}/talks/{{t6}}/co-speakers/{{c}}
+HTTP 200
+
+POST {{base_url}}/talks
+{ "title": "C one", "format": "PRESENTATION", "level": "BEGINNER", "speakerId": {{c}} }
+HTTP 201
+
+POST {{base_url}}/talks
+{ "title": "C two", "format": "PRESENTATION", "level": "BEGINNER", "speakerId": {{c}} }
+HTTP 409
+
+PUT {{base_url}}/talks/{{t5}}/status
+{ "status": "REJECTED" }
+HTTP 200
+
+POST {{base_url}}/talks
+{ "title": "C two", "format": "PRESENTATION", "level": "BEGINNER", "speakerId": {{c}} }
+HTTP 201
+
 # s: o3, t3, o4, at the cap again
 POST {{base_url}}/talks
 { "title": "Own five", "format": "PRESENTATION", "level": "BEGINNER", "speakerId": {{s}} }
@@ -233,4 +280,15 @@ HTTP 400
 
 POST {{base_url}}/talks
 { "title": "Nobody", "format": "PRESENTATION", "level": "BEGINNER", "speakerId": 999999999 }
+HTTP 400
+
+POST {{base_url}}/talks
+{ "title": "Bad format", "format": "KEYNOTE", "level": "BEGINNER", "speakerId": {{s}} }
+HTTP 400
+
+POST {{base_url}}/talks
+{ "title": "Bad level", "format": "PRESENTATION", "level": "beginner", "speakerId": {{s}} }
+HTTP 400
+
+PUT {{base_url}}/talks/abc/co-speakers/{{s}}
 HTTP 400

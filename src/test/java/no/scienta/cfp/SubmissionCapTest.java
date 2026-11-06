@@ -236,6 +236,9 @@ class SubmissionCapTest {
         ids(get("/talks/" + legacy2), s);
         assertEquals(3, get("/speakers/" + s + "/talks").size());
         decide(own, "WAITLISTED");
+        rate(own, 1);
+        rate(own, 2);
+        decide(own, "ACCEPTED");
         assertEquals(5, load(s));
 
         withdraw(own, s);
@@ -271,15 +274,18 @@ class SubmissionCapTest {
                 sent.add(http.sendAsync(request("POST", "/talks", talkBody(s)), HttpResponse.BodyHandlers.ofString()));
                 sent.add(http.sendAsync(request("PUT", path(talks.get(i), s), null), HttpResponse.BodyHandlers.ofString()));
             }
-            int succeeded = 0;
+            int succeeded = 0, busy = 0;
             for (CompletableFuture<HttpResponse<String>> f : sent) {
                 HttpResponse<String> response = f.get(20, TimeUnit.SECONDS);
                 int status = response.statusCode();
-                assertTrue(status == 200 || status == 201 || status == 409, status + " " + response.body());
-                if (status != 409) succeeded++;
+                // 503: a PUT that waited over 2 s for a lock (API table); it changed nothing.
+                assertTrue(status == 200 || status == 201 || status == 409 || status == 503, status + " " + response.body());
+                if (status == 200 || status == 201) succeeded++;
+                if (status == 503) busy++;
             }
-            assertEquals(3, succeeded, "round " + round);
-            assertEquals(3, load(s), "round " + round);
+            assertEquals(succeeded, load(s), "round " + round);
+            assertEquals(busy == 0 ? 3 : Math.min(3, succeeded), succeeded, "round " + round);
+            assertTrue(load(s) <= 3, "round " + round);
         }
     }
 
@@ -298,6 +304,26 @@ class SubmissionCapTest {
         }
         HttpResponse<String> response = submitted.get(10, TimeUnit.SECONDS);
         assertEquals(201, response.statusCode(), response.body());
+    }
+
+    @Test
+    void speakerLockTimeoutAnswers503AndChangesNothing() throws Exception {
+        // API table: PUT co-speakers now also waits on the speaker row, under the same 2 s lock_timeout.
+        long s = speaker();
+        long talk = talkBy(speaker());
+        try (Connection holder = TestDatabase.connect(database)) {
+            holder.setAutoCommit(false);
+            // FOR NO KEY UPDATE blocks the app's FOR UPDATE on the speaker but not the FK check of the insert, so this
+            // only times out if the speaker lock is taken.
+            holder.createStatement().executeQuery("SELECT id FROM speaker WHERE id = " + s + " FOR NO KEY UPDATE").close();
+            HttpResponse<String> response = http.send(request("PUT", path(talk, s), null), HttpResponse.BodyHandlers.ofString());
+            assertEquals(503, response.statusCode(), response.body());
+            assertEquals("1", response.headers().firstValue("Retry-After").orElse(null));
+            holder.rollback();
+        }
+        ids(get("/talks/" + talk));
+        assertEquals(0, load(s));
+        ids(coSpeak(talk, s, 200), s);
     }
 
     // ---------------------------------------------------------------- helpers
