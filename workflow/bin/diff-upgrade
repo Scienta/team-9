@@ -18,7 +18,7 @@ J = {"Content-Type": "application/json"}
 
 
 def corpus():
-    # (method, path, body, headers). "{s1}" etc. are filled in from earlier responses (same on both sides).
+    # (method, path, body, headers). "{talk}" in a path or body is the id of the latest talk created with a 201.
     c = []
     add = lambda m, p, b=None, h=J: c.append((m, p, b, h))
     # --- speakers
@@ -201,6 +201,37 @@ def corpus():
     # --- Unicode whitespace in a required name (Hibernate Validator 9's @NotBlank)
     add("POST", "/speakers", '{"name":"\\u2003","email":"emspace@example.com"}')
     add("POST", "/speakers", '{"name":"\\u00a0","email":"nbsp@example.com"}')
+    # --- workshop registration
+    add("POST", "/talks", '{"title":"WS","format":"WORKSHOP","level":"BEGINNER","speakerId":5}')
+    add("POST", "/workshops/{talk}/registrations", '{"name":"Early","email":"early@example.com"}')
+    add("PUT", "/talks/{talk}/ratings/1", '{"score":5}')
+    add("PUT", "/talks/{talk}/ratings/2", '{"score":4}')
+    add("PUT", "/talks/{talk}/status", '{"status":"ACCEPTED"}')
+    add("POST", "/workshops/{talk}/registrations", '{"name":"Ada","email":"ada@example.com"}')
+    add("POST", "/workshops/{talk}/registrations/", '{"name":"Grace","email":"grace@example.com"}')
+    add("POST", "/workshops/{talk}/registrations", '{"name":"Ada","email":"ADA@example.com"}')
+    add("POST", "/workshops/{talk}/registrations", '{"name":"","email":"x@example.com"}')
+    add("POST", "/workshops/{talk}/registrations", '{"name":"X","email":"x@localhost"}')
+    add("POST", "/workshops/{talk}/registrations", '{"name":"X","email":"not-an-email"}')
+    add("POST", "/workshops/{talk}/registrations", '{"name":123,"email":"num@example.com"}')
+    add("POST", "/workshops/{talk}/registrations", '{"name":true,"email":"bool@example.com"}')
+    add("POST", "/workshops/{talk}/registrations", '{"name":"X","email":null}')
+    add("POST", "/workshops/{talk}/registrations", '{"name":"N\\u0000L","email":"nul@example.com"}')
+    add("POST", "/workshops/{talk}/registrations", '{"name":"\\u2003","email":"ws@example.com"}')
+    add("POST", "/workshops/{talk}/registrations", '{"name":"C", /* c */ "email":"c@example.com"}')
+    add("POST", "/workshops/{talk}/registrations", "nope")
+    add("POST", "/workshops/{talk}/registrations", "")
+    add("POST", "/workshops/1/registrations", '{"name":"X","email":"nows@example.com"}')
+    add("POST", "/workshops/999999/registrations", '{"name":"X","email":"x9@example.com"}')
+    add("POST", "/workshops/abc/registrations", '{"name":"X","email":"xa@example.com"}')
+    add("GET", "/workshops/{talk}/registrations")
+    add("GET", "/workshops/{talk}/registrations/")
+    add("GET", "/workshops/1/registrations")
+    add("GET", "/workshops/999999/registrations")
+    add("GET", "/workshops/abc/registrations")
+    for i in range(20):
+        add("POST", "/workshops/{talk}/registrations", '{"name":"Seat %d","email":"seat%d@example.com"}' % (i, i))
+    add("GET", "/workshops/{talk}/registrations")
     return c
 
 
@@ -238,9 +269,13 @@ def main():
     old, new = sys.argv[1].rstrip("/"), sys.argv[2].rstrip("/")
     diffs = 0
     reqs = corpus()
+    talk = None
     for method, path, body, headers in reqs:
+        path = path.replace("{talk}", str(talk))
         a = send(old, method, path, body, headers)
         b = send(new, method, path, body, headers)
+        if method == "POST" and path.startswith("/talks") and a[0] == 201:
+            talk = json.loads(a[2])["id"]
         problems = []
         if a[0] != b[0]:
             problems.append("status %s -> %s" % (a[0], b[0]))

@@ -1,10 +1,10 @@
 package no.scienta.cfp;
 
-import javax.validation.constraints.Email;
-import javax.validation.constraints.NotBlank;
-import javax.validation.constraints.Pattern;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import tools.jackson.databind.annotation.JsonDeserialize;
 
 /**
  * POST /workshops/{id}/registrations. Validated like SpeakerForm plus a dot in the email's domain (D1), and strictly

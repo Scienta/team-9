@@ -1,11 +1,9 @@
 package no.scienta.cfp;
 
-import java.io.IOException;
-
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.core.JsonToken;
-import com.fasterxml.jackson.databind.DeserializationContext;
-import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
+import tools.jackson.core.JsonParser;
+import tools.jackson.core.JsonToken;
+import tools.jackson.databind.DeserializationContext;
+import tools.jackson.databind.deser.std.StdDeserializer;
 
 /**
  * A String field that only accepts a JSON string. By default Jackson turns 123 or true into "123" or "true", which
@@ -19,10 +17,10 @@ public class StrictStringDeserializer extends StdDeserializer<String> {
     }
 
     @Override
-    public String deserialize(JsonParser p, DeserializationContext ctx) throws IOException {
+    public String deserialize(JsonParser p, DeserializationContext ctx) {
         if (p.currentToken() != JsonToken.VALUE_STRING) {
             return (String) ctx.handleUnexpectedToken(String.class, p);
         }
-        return p.getText();
+        return p.getString();
     }
 }

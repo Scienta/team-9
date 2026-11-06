@@ -62,7 +62,8 @@ No new or changed endpoints. `GET /actuator/info`: 200 `{"versions":{"java":…,
   with `spring-boot-properties-migrator`, which reports nothing left now). `CONFIRMED by Jonathan Lillesæter`
 - **D8** Hibernate Validator 9's `@NotBlank` also rejects a name that is only Unicode whitespace
   (`"\u2003"`, `"\u3000"`): 201 on 2.7, 400 now. → Accept it: the speakers spec asks for "a real name",
-  so this is closer to the spec, and `\u00a0`/tab/newline behave as before. The only status change
+  so this is closer to the spec, and `\u00a0`/tab/newline behave as before. The same holds for the
+  name in `POST /workshops/{id}/registrations`, which merged later with the same `@NotBlank`. The only status change
   found (`diff-upgrade` lists it). `CONFIRMED by Jonathan Lillesæter`
 - **D9** Tomcat 11 throws on a query/form parameter it can't decode (`?sort=%zz`) and accepts only 1000
   parameters; Tomcat 9 dropped the bad parameter and accepted 10000. → Restore both
