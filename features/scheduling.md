@@ -25,3 +25,4 @@ PR: -
 - 2026-11-06T15:04Z Henrik Otgard (claude-otgard): check-6 FAULTY 206,212: same speaker placed twice in S2 (talks 9256, 9274) and a stale read after a 2.6 s lock wait; same root cause as workshop-registration check-4; fix on fix/isolation-in-transaction
 - 2026-11-06T15:08Z Henrik Otgard (claude-otgard): fix pushed: fix/isolation-in-transaction (5730d53), PooledIsolationTest red->green, 194 tests, retro L18; PR to open: https://github.com/Scienta/team-9/compare/main...fix/isolation-in-transaction
 - 2026-11-06T15:13Z Henrik Otgard (claude-otgard): fix/isolation-in-transaction code review: driver session SET removed (test 4->0), rushes tightened; 195 tests, 11 Hurl files pass; pushed c048444
+- 2026-11-06T15:21Z Henrik Otgard (claude-otgard): fix/isolation-in-transaction: 3 reviewers, 0 bugs; added co-speaker, decision and load-race rushes (all fail without the fix); pgbouncer confirms 39/200 RR before, 0 after; 198 tests; pushed 045d9be
