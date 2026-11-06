@@ -11,8 +11,11 @@ from (`lessons.md#L<n>`).
    wrong case for an enum, extra fields, non-numeric path id.
 3. **Limits.** Every "at most N" / "at least N": what happens at N, at N+1, and does it hold under
    concurrent requests?
-4. **Idempotency.** Doing the same thing twice: a no-op returning 200, or an error?
-5. **Undo.** Removing something that isn't there: 404, or a no-op 200?
+4. **Idempotency.** Doing the same thing twice: a no-op returning 200, or an error? Answer it
+   separately for each verb: the request saying a repeated add "changes nothing" says nothing about
+   a repeated remove (lessons.md L3).
+5. **Undo.** Removing something that isn't there, including removing it a second time: by default
+   404 (see the conventions), not a no-op 200 (lessons.md L3).
 6. **State.** Every state and every transition: which are allowed, which are final, and what does
    a forbidden one answer? Draw the table.
 7. **Who may do it.** Anyone, or only an owner (a `speakerId` in the body)? What if it's the wrong one?
@@ -37,7 +40,9 @@ Our default answers, so every feature behaves the same way. A DECISION that foll
   transition, a duplicate.
 - **403** only if the request explicitly has an owner and the caller is someone else; otherwise 409.
 - Errors use the app's existing shape (`ResponseStatusException` with a short message).
-- Repeating an operation that already happened is a **no-op 200** returning the current resource,
-  unless the request says otherwise.
+- Repeating an **add** the request calls a no-op is a **no-op 200** returning the current resource.
+- **Removing** something that isn't there (never added, already removed, or the wrong kind of member)
+  is a **404**, unless the request says otherwise. The harness checks this: a 200 no-op failed
+  co-speakers/check-1 (lessons.md L3).
 - A forbidden operation **changes nothing**.
 - Lists are oldest first (insertion order) unless the request says otherwise.

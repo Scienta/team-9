@@ -76,6 +76,14 @@ No new deployment or claim yet, so no new harness failure evidence. Pre-game fee
 used as proof of full conformance. Local inspection found email validation and exact timestamp
 formatting gaps; partial fixes are in the working tree, pending regression coverage and review.
 
+**co-speakers/check-1, FAULTY from the claim at tick 46 until the fix deployed.** The harness
+removed a co-speaker, then sent the same `DELETE` again; we answered 200 (a no-op), and the
+harness rejected it. Our decision had copied the request's "a repeated add changes nothing" over
+to removal. Nobody confirmed that decision before the claim, and there was no Hurl file, so no
+evidence was checked. The fix answers 404, `examples/co-speakers.hurl` replays the harness's
+sequence, and the spec checklist now asks about a repeated remove on its own
+([lessons.md](workflow/lessons.md) L3).
+
 ## 5. Reusable artifacts
 
 - [`workflow/bin/work`](workflow/bin/work): a race-safe shared agent board on an orphan git branch

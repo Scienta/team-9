@@ -6,7 +6,7 @@ Requirements: released co-speakers v1 snapshot. These choices fill in unspecifie
 - PUT and DELETE return 200 and the full current Talk, including ordered `coSpeakerIds`; all existing Talk-returning routes include this field, with [] for no co-speakers.
 - Missing talk: 404, checked before speaker validation. Missing registered speaker: 404 for either operation. Non-numeric/out-of-range path integers: Spring binding returns 400; numeric IDs with no matching resource (including zero/negative) return 404.
 - PUT of the main speaker: 400. PUT of a third distinct co-speaker: 409. Duplicate PUT: 200 no-op, even at capacity; it must not reorder entries.
-- DELETE of a registered speaker not attached to the talk (including the main speaker): 200 no-op. The main speaker never changes.
+- DELETE of a registered speaker not attached to the talk (including the main speaker, and a repeated DELETE): 404 `speaker is not a co-speaker of this talk`, nothing changes. The main speaker never changes. (Was a 200 no-op until tick 51: the harness's co-speakers/check-1 rejected the repeated DELETE; lessons.md L3.)
 - Removing then re-adding appends at the end. No body is required for either mutation; request bodies have no effect.
 - Co-speaking does not affect main-speaker filters, own talk lists, submission quotas, or ratings. No restriction based on the co-speaker's submission count.
 
