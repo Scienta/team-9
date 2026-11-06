@@ -1,7 +1,7 @@
 # Scheduling (`scheduling`)
 
 Feature request: [`specs/scheduling.md`](../../specs/scheduling.md), version 1.
-Status: building
+Status: in-review
 
 ## Rules
 
