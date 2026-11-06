@@ -36,10 +36,10 @@ No new or changed endpoints. `GET /actuator/info`: 200 `{"versions":{"java":…,
   trailing tokens, nulls for primitives…) don't change our formats. Proven by the differential run. `UNCONFIRMED`
 - **D3** Trailing slash: restore for every path or only `/speakers`? → every path, because 2.7 matched
   them everywhere and "nothing else changes". `UNCONFIRMED`
-- **D4** CI's Java version lives in `deploy.yml`, which a feature branch may not edit
-  (`.claude/rules/safety.md`). → A separate PR makes `deploy.yml` read `.java-version`; this PR
-  changes `.java-version` to 25. That PR (#5) must merge first; this branch is then rebased so
-  `.java-version` says 25 (both add the file). `UNCONFIRMED`
+- **D4** CI's Java version was pinned to 11 in `deploy.yml` and `pr.yml`. → Both now read
+  `.java-version` (25), so the Dockerfile, the pom and CI move together. `.claude/rules/safety.md` wants
+  `deploy.yml` changes in their own PR; at Jonathan's request it's folded into this one (PR #5 closed),
+  because neither PR is useful without the other. `UNCONFIRMED`
 - **D5** Framework-generated error wording that no spec defines changes with Boot 4 and we accept it
   (same status, same body shape `timestamp, status, error, message, path`): JSON parse errors no longer
   quote Jackson internals, type mismatches start `Method parameter 'id': …`, 405/415/missing-param
