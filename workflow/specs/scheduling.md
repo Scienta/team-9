@@ -54,33 +54,33 @@ No existing response changes: `Talk` gets no new field.
 
 - **D1** A room or slot that isn't one of the listed values (`R4`, `r1`, `S0`, `S6`) → 400 on every
   verb: the request defines them as enums, so it's malformed input (house convention: unknown enum
-  value, case-sensitive). `UNCONFIRMED`
+  value, case-sensitive). `CONFIRMED by Henrik Otgard`
 - **D2** `talkId` must be a JSON whole number ≥ 1. A string (`"5"`), decimal (`5.5` or `5.0`),
   boolean, null or missing `talkId` → 400 (house convention: wrong type; lessons.md L5 on Jackson
-  coercion). Extra fields are ignored. `UNCONFIRMED`
+  coercion). Extra fields are ignored. `CONFIRMED by Henrik Otgard`
 - **D3** `talkId` that doesn't exist → 404, not 400: the talk is the subject of the action (the
-  house convention's exception for body ids). `UNCONFIRMED`
+  house convention's exception for body ids). `CONFIRMED by Henrik Otgard`
 - **D4** A talk that isn't `ACCEPTED` (`SUBMITTED`, `WAITLISTED`, `REJECTED`, `WITHDRAWN`) → 409
-  (house convention: the state forbids it). `UNCONFIRMED`
+  (house convention: the state forbids it). `CONFIRMED by Henrik Otgard`
 - **D5** A workshop in any slot but `S4` → 409: the request is well-formed, the rule forbids it.
-  `UNCONFIRMED`
+  `CONFIRMED by Henrik Otgard`
 - **D6** Putting the same talk in the same place again → 200 with the `Entry`, nothing changes:
   `PUT` is idempotent and the talk is still on the programme only once. This holds even if the
   talk changed since it was put there (withdrawn, or a co-speaker who now clashes, R8): the repeat
   changes nothing, so no rule is checked again. The same talk in a different place → 409 (R6: take
-  it out first). `UNCONFIRMED (ask the product owner)`
+  it out first). `CONFIRMED by Henrik Otgard`
 - **D7** `GET` on an empty place → 404: there is no `Entry` to show (house convention: 404 for a
-  path that names nothing). `UNCONFIRMED`
+  path that names nothing). `CONFIRMED by Henrik Otgard`
 - **D8** `DELETE` answers 204 with no body: the request gives `DELETE` no response schema, unlike
   `PUT` and `GET`. An empty place, including a second `DELETE`, → 404 (house convention, lessons.md
-  L3). `UNCONFIRMED (ask the product owner)`
+  L3). `CONFIRMED by Henrik Otgard`
 - **D9** Which checks run first when several fail → path (400), body (400), talk exists (404),
   then the D6 repeat (200), status (409), fit (409), place free (409), talk not elsewhere (409),
   speakers (409). Every failure changes nothing. Spring answers 415 for a non-JSON `Content-Type`
-  before any of these. `UNCONFIRMED`
-- **D10** Who may change the programme → anyone; the request has no caller identity. `UNCONFIRMED`
+  before any of these. `CONFIRMED by Henrik Otgard`
+- **D10** Who may change the programme → anyone; the request has no caller identity. `CONFIRMED by Henrik Otgard`
 - **D11** Withdrawing a scheduled talk, or changing its co-speakers, doesn't touch the programme
-  (R8). A withdrawn talk stays in its place until someone deletes it. `UNCONFIRMED`
+  (R8). A withdrawn talk stays in its place until someone deletes it. `CONFIRMED by Henrik Otgard`
 
 ## Concurrency and data
 
