@@ -36,6 +36,8 @@ ends in a concrete change to how we work, not just a fix.
    `fix(<slug>): <what>` with a body that starts with the lesson. For a FAULTY check say clearly at
    the top that it's costing points, so a person reviews it first.
 7. If a harness check was FAULTY, add the failure and its root cause to `REVIEW.md` section 4.
+8. Record it on the board: `workflow/bin/work log <slug> "retro <lesson id>: <root cause>, PR <url>"`.
+   If the fix isn't on the feature's own branch, `work start` isn't needed: log on the feature.
 
 After a claim with nothing wrong, still run a short retro: anything that slowed us down or that a
 person had to correct? If so, a lesson and a change; if not, nothing to commit.

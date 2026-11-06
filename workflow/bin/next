@@ -12,7 +12,7 @@
 #   claimed           claimed, every check OK
 #   merged            a PR from feat/<slug> is merged, not claimed yet: /verify, then a person claims
 #   in-review         an open PR from feat/<slug>; shows how many DECISIONs a person still has to confirm
-#   in-progress       a feat/<slug> branch on origin, no PR yet: someone is on it
+#   in-progress       a feat/<slug> branch on origin, or taken on the work board (workflow/bin/work)
 #   new               none of the above: /spec then /build (or /drive)
 #   unreleased        the spec answers 404
 #
@@ -37,6 +37,9 @@ if command -v gh >/dev/null && gh auth status >/dev/null 2>&1; then
 else
   echo "(gh not logged in: PR states unknown)" >&2
 fi
+
+# The shared agent board on origin/work (.claude/rules/work-branch.md): who has taken what.
+board="$(workflow/bin/work show 2>/dev/null || echo '(work board unreachable)' >&2)"
 
 mkdir -p specs
 printf '%-16s %-16s %-6s %s\n' FEATURE STATE KIND DETAIL
@@ -77,6 +80,8 @@ while IFS=$'\t' read -r slug claimed bad; do
     state=in-review detail="PR $pr_open waiting for a person's review, ${open_d:-0} decision(s) to confirm"
   elif grep -qx "feat/$slug" <<<"$branches"; then
     state=in-progress detail="branch feat/$slug on origin"
+  elif board_line="$(awk -v s="$slug" '$1==s && $2!="claimed" && $2!="abandoned"' <<<"$board")" && [ -n "$board_line" ]; then
+    state=in-progress detail="taken on the work board: $(cut -c18- <<<"$board_line" | sed 's/  */ /g')"
   else
     state=new detail="/spec $slug"
     suggest_new="${suggest_new:-$slug}"

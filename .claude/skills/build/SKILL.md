@@ -5,8 +5,12 @@ description: Implement a feature from its team spec on branch feat/<slug> - test
 
 # /build <slug>
 
-Precondition: you're on `feat/<slug>` and `workflow/specs/<slug>.md` exists. Read it, plus
+Precondition: you're on `feat/<slug>` in its worktree, the feature is yours on the work board
+(`workflow/bin/work show <slug>`), and `workflow/specs/<slug>.md` exists. Read it, plus
 `workflow/lessons.md` and `workflow/checklists/review.md`, before writing anything.
+
+At the end of every numbered step below, record what happened with
+`workflow/bin/work log <slug> "<step>: <result with counts>"` (`.claude/rules/work-branch.md`).
 
 ## 1. Tests first
 
@@ -53,4 +57,5 @@ Push and open a PR with `gh pr create`, titled `feat(<slug>): <feature name>`. T
   because Y), and the lessons added.
 - **Local evidence:** the test and Hurl summary lines you saw.
 
-Update the team spec's `Status:` to `in-review`. Tell the user the PR URL and the decisions to confirm.
+Update the team spec's `Status:` to `in-review`, then `workflow/bin/work state <slug> in-review "PR <url>, <n> decisions to confirm"`.
+Tell the user the PR URL and the decisions to confirm.

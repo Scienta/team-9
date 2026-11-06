@@ -1,6 +1,7 @@
 # Gates every pull request before a person can merge it (and so before it deploys):
 #   - tests: the whole build and test suite (Testcontainers needs Docker, which the runner has)
 #   - decisions: no team spec may have a DECISION a person hasn't confirmed (workflow/bin/check-decisions)
+#   - not-work: the shared agent board branch `work` never merges into main (.claude/rules/work-branch.md)
 # Make them required checks on main (Settings → Branches) so a red PR can't be merged.
 name: pr
 
@@ -31,6 +32,19 @@ jobs:
           restore-keys: m2-
       - name: Build and test
         run: ./mvnw -B package
+
+  not-work:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: The work board never merges into main
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          if [ "$HEAD_REF" = work ]; then
+            echo "::error::'work' is the agent board and never merges into main (.claude/rules/work-branch.md). Close this PR."
+            exit 1
+          fi
 
   decisions:
     runs-on: ubuntu-latest

@@ -1,0 +1,178 @@
+#!/usr/bin/env bash
+# The team's shared agent board: the orphan branch `work` on origin (.claude/rules/work-branch.md).
+# Every agent records what it starts, does and hands over here, and it's pushed at once, so every
+# person's agents see the same picture. It never merges into main (no shared history with it).
+#
+# Usage:
+#   workflow/bin/work show [<slug>|notes/<topic>]   board overview, or one file
+#   workflow/bin/work start <slug> [message]        take a feature; fails (exit 3) if someone has it
+#   workflow/bin/work log <slug> <message>          add a line to the feature's log
+#   workflow/bin/work state <slug> <state> [msg]    change state: in-progress in-review merged
+#                                                   verified claimed blocked abandoned
+#   workflow/bin/work note <topic> <message>        add to notes/<topic>.md (PO answers, harness facts)
+#
+# Writes never use a checkout: each one builds a commit on top of origin/work with git plumbing and
+# pushes it as a fast-forward. If someone else pushed first, the push is rejected and the write is
+# redone on the new tip, so concurrent writers never lose each other's lines and only one `start`
+# of a feature can win. Set WORK_AGENT to name the agent session (default "agent").
+set -euo pipefail
+
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+cd "$root"
+remote="${WORK_REMOTE:-origin}" branch=work
+ref="refs/remotes/$remote/$branch"
+who="$(git config user.name 2>/dev/null || echo unknown) (${WORK_AGENT:-agent})"
+states="in-progress in-review merged verified claimed blocked abandoned"
+free_states="claimed abandoned"  # a feature in one of these may be started again
+have=0
+tmp="$(mktemp -d)"
+trap 'rm -rf "$tmp"' EXIT
+
+die() { echo "work: $*" >&2; exit 1; }
+now() { date -u +%Y-%m-%dT%H:%MZ; }
+valid_slug() { [[ "$1" =~ ^[a-z0-9][a-z0-9-]*$ ]] || die "bad name '$1' (lowercase letters, digits, dashes)"; }
+
+check_message() {
+  [[ "$1" != *$'\n'* ]] || die "message must be one line"
+  case "$1" in *Bearer*|*Authorization:*) die "message looks like it contains a credential" ;; esac
+  local token_file
+  token_file="$(cd "$(git rev-parse --git-common-dir)/.." && pwd)/.fagdag/harness-token"
+  if [ -s "$token_file" ]; then
+    local token; token="$(tr -d '[:space:]' <"$token_file")"
+    if [ -n "$token" ] && [[ "$1" == *"$token"* ]]; then die "message contains the harness token"; fi
+  fi
+}
+
+fetch() {
+  local rc=0
+  git ls-remote --exit-code --heads "$remote" "$branch" >/dev/null 2>&1 || rc=$?
+  if [ "$rc" = 0 ]; then
+    git fetch -q "$remote" "+refs/heads/$branch:$ref" || die "can't fetch $remote/$branch"
+    have=1
+  elif [ "$rc" = 2 ]; then
+    git update-ref -d "$ref" 2>/dev/null || true
+    have=0
+  else
+    die "can't reach $remote"
+  fi
+}
+
+current() { [ "$have" = 1 ] && git show "$ref:$1" 2>/dev/null; }
+
+field() { sed -n "s/^$2: //p" <<<"$1" | head -1; }
+
+readme() {
+  cat <<'EOF'
+# work: the team's agent board
+
+Orphan branch, never merged anywhere. Written only through `workflow/bin/work` (on main), which
+pushes every change at once. Rules: `.claude/rules/work-branch.md` on main.
+
+- `features/<slug>.md`: who has a drip feature, its state, branch, PR, and a log of what happened.
+- `notes/<topic>.md`: shared facts: product-owner answers, harness observations, handovers.
+EOF
+}
+
+# publish <path> <file> <message>: commit <file> as <path> on top of the fetched tip and push it.
+publish() {
+  local idx="$tmp/index" blob tree parent=() commit
+  rm -f "$idx"
+  blob="$(git hash-object -w "$2")"
+  if [ "$have" = 1 ]; then
+    GIT_INDEX_FILE="$idx" git read-tree "$ref"
+    parent=(-p "$(git rev-parse "$ref")")
+  else
+    readme >"$tmp/README.md"
+    GIT_INDEX_FILE="$idx" git update-index --add --cacheinfo "100644,$(git hash-object -w "$tmp/README.md"),README.md"
+  fi
+  GIT_INDEX_FILE="$idx" git update-index --add --cacheinfo "100644,$blob,$1"
+  tree="$(GIT_INDEX_FILE="$idx" git write-tree)"
+  commit="$(git commit-tree "$tree" ${parent[@]+"${parent[@]}"} -m "$3")"
+  git push -q "$remote" "$commit:refs/heads/$branch" 2>"$tmp/push.err"
+}
+
+# write <path> <message> <build-function>: fetch, build the new content, publish; retry on a race.
+write() {
+  local attempt
+  for attempt in 1 2 3 4 5 6 7 8; do
+    fetch
+    "$3" >"$tmp/new"
+    if publish "$1" "$tmp/new" "$2"; then
+      echo "work: $2"
+      return 0
+    fi
+    sleep "$attempt"
+  done
+  cat "$tmp/push.err" >&2
+  die "couldn't push to $remote/$branch after 8 tries"
+}
+
+cmd="${1:-show}"; shift || true
+case "$cmd" in
+  show)
+    fetch
+    [ "$have" = 1 ] || { echo "(no work branch on $remote yet; the first write creates it)"; exit 0; }
+    if [ -n "${1:-}" ]; then
+      path="$1"; [[ "$path" == notes/* ]] || path="features/$1"
+      current "${path%.md}.md" || die "nothing at ${path%.md}.md"
+      exit 0
+    fi
+    printf '%-16s %-12s %-34s %s\n' FEATURE STATE OWNER "LAST ENTRY"
+    git ls-tree --name-only "$ref" features/ 2>/dev/null | while read -r f; do
+      body="$(current "$f")"
+      printf '%-16s %-12s %-34s %s\n' "$(basename "$f" .md)" "$(field "$body" State)" \
+        "$(field "$body" Owner)" "$(grep '^- ' <<<"$body" | tail -1 | cut -c3-)"
+    done
+    notes="$(git ls-tree --name-only "$ref" notes/ 2>/dev/null | tr '\n' ' ')"
+    [ -z "$notes" ] || echo "Notes: $notes"
+    ;;
+  start)
+    slug="${1:?usage: work start <slug> [message]}"; valid_slug "$slug"
+    msg="${2:-started}"; check_message "$msg"
+    build_start() {
+      local old state
+      old="$(current "features/$slug.md" || true)"
+      state="$(field "$old" State)"
+      if [ -n "$old" ] && [[ " $free_states " != *" $state "* ]]; then
+        echo "work: $slug is already taken: $(field "$old" Owner), state $state" >&2
+        grep '^- ' <<<"$old" | tail -3 >&2
+        exit 3
+      fi
+      printf '# %s\n\nOwner: %s\nState: in-progress\nBranch: feat/%s\nPR: -\n\n## Log\n\n' "$slug" "$who" "$slug"
+      if [ -n "$old" ]; then echo "- $(now) $who: restarted after $state"; fi
+      echo "- $(now) $who: $msg"
+    }
+    write "features/$slug.md" "start $slug: $who" build_start
+    ;;
+  log|state)
+    slug="${1:?usage: work $cmd <slug> ...}"; valid_slug "$slug"
+    if [ "$cmd" = state ]; then
+      new_state="${2:?usage: work state <slug> <state> [message]}"
+      [[ " $states " == *" $new_state "* ]] || die "state must be one of: $states"
+      msg="state -> $new_state${3:+: $3}"
+    else
+      msg="${2:?usage: work log <slug> <message>}"
+    fi
+    check_message "$msg"
+    build_entry() {
+      local old
+      old="$(current "features/$slug.md")" || { echo "work: $slug isn't started; run: work start $slug" >&2; exit 3; }
+      if [ "$cmd" = state ]; then old="$(sed "s/^State: .*/State: $new_state/" <<<"$old")"; fi
+      # A PR URL in the message is also recorded in the PR: field.
+      local pr; pr="$(grep -oE 'https://github.com/[^ ]+/pull/[0-9]+' <<<"$msg" | head -1 || true)"
+      if [ -n "$pr" ]; then old="$(sed "s#^PR: .*#PR: $pr#" <<<"$old")"; fi
+      printf '%s\n- %s %s: %s\n' "$old" "$(now)" "$who" "$msg"
+    }
+    write "features/$slug.md" "$slug: $msg" build_entry
+    ;;
+  note)
+    topic="${1:?usage: work note <topic> <message>}"; valid_slug "$topic"
+    msg="${2:?usage: work note <topic> <message>}"; check_message "$msg"
+    build_note() {
+      local old; old="$(current "notes/$topic.md" || printf '# %s\n' "$topic")"
+      printf '%s\n- %s %s: %s\n' "$old" "$(now)" "$who" "$msg"
+    }
+    write "notes/$topic.md" "note $topic: $who" build_note
+    ;;
+  *) die "unknown command '$cmd' (show, start, log, state, note)" ;;
+esac
