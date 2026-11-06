@@ -90,7 +90,8 @@ class AcceptanceTest {
     void aSpeakerIdThatIsNotAWholeNumberIsBadInputAndChangesNothing() throws Exception {
         String speaker = newSpeaker();
         String talk = newTalk(speaker);
-        for (String bad : new String[] {"1.5", speaker + ".5", speaker + ".0", "\"" + speaker + "\"", "null", "true"}) {
+        for (String bad : new String[] {"1.5", speaker + ".5", speaker + ".0", speaker + "e0", "\"" + speaker + "\"", "null", "true",
+                "18446744073709551617", "-1", "0", "-0", "[]", "{}"}) {
             HttpResponse<String> r = send("POST", "/talks/" + talk + "/withdraw", "{\"speakerId\":" + bad + "}");
             assertEquals(400, r.statusCode(), bad + ": " + r.body());
         }
