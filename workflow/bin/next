@@ -1,0 +1,98 @@
+#!/usr/bin/env bash
+# Lists every feature on the harness with where it stands, fetches any spec we don't have yet into
+# specs/<slug>.md, and suggests what to do next. Read-only apart from writing specs/.
+#
+# Usage: workflow/bin/next
+#
+# Specs are re-fetched every run: a changed spec (a new V:) is reported as SPEC CHANGED, since a
+# feature we built against the old version may now be wrong.
+#
+# A feature's state, first match wins:
+#   FAULTY            claimed, and at least one harness check is not OK: it's costing points
+#   claimed           claimed, every check OK
+#   merged            a PR from feat/<slug> is merged, not claimed yet: /verify, then a person claims
+#   in-review         an open PR from feat/<slug>; shows how many DECISIONs a person still has to confirm
+#   in-progress       a feat/<slug> branch on origin, no PR yet: someone is on it
+#   new               none of the above: /spec then /build (or /drive)
+#   unreleased        the spec answers 404
+#
+# "in-progress" comes from origin, so push your feat/<slug> branch as soon as you start: that's how
+# the other people on the team see you're on it.
+set -euo pipefail
+
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+cd "$root"
+h="$root/workflow/bin/harness"
+team="$(tr -d '[:space:]' <.fagdag/team)"
+
+feedback="$("$h" "/api/teams/$team/feedback")"
+tick="$(jq -r '.tick' <<<"$feedback")"
+
+git fetch -q --prune origin 2>/dev/null || echo "(git fetch failed: branch states may be stale)" >&2
+branches="$(git for-each-ref --format='%(refname:short)' 'refs/remotes/origin/feat/*' | sed 's#^origin/##')"
+open_prs="" merged_prs=""
+if command -v gh >/dev/null && gh auth status >/dev/null 2>&1; then
+  open_prs="$(gh pr list --state open --limit 100 --json headRefName,number --jq '.[] | "\(.headRefName) #\(.number)"')"
+  merged_prs="$(gh pr list --state merged --limit 100 --json headRefName,number --jq '.[] | "\(.headRefName) #\(.number)"')"
+else
+  echo "(gh not logged in: PR states unknown)" >&2
+fi
+
+mkdir -p specs
+printf '%-16s %-16s %-6s %s\n' FEATURE STATE KIND DETAIL
+suggest_faulty="" suggest_merged="" suggest_new="" changed=""
+
+while IFS=$'\t' read -r slug claimed bad; do
+  spec="specs/$slug.md"
+  fresh="$(mktemp)"
+  if "$h" "/specs/$slug/spec.md" >"$fresh" 2>/dev/null; then
+    if [ ! -s "$spec" ]; then
+      echo "(fetched new spec: $spec)" >&2
+    elif ! cmp -s "$fresh" "$spec"; then
+      echo "SPEC CHANGED: $spec (git diff $spec shows how; re-check the team spec and tests)" >&2
+      changed="$changed $slug"
+    fi
+    mv "$fresh" "$spec"
+  else
+    rm -f "$fresh"
+    if [ ! -s "$spec" ]; then
+      printf '%-16s %-16s %-6s %s\n' "$slug" unreleased - "spec not released yet"
+      continue
+    fi
+  fi
+  kind="$(grep -m1 -i '^Kind:' "$spec" | grep -qi drip && echo drip || echo base)"
+  pr_open="$(awk -v b="feat/$slug" '$1==b {print $2; exit}' <<<"$open_prs")"
+  pr_merged="$(awk -v b="feat/$slug" '$1==b {print $2; exit}' <<<"$merged_prs")"
+
+  if [ "$claimed" = true ] && [ "$bad" -gt 0 ]; then
+    state=FAULTY detail="$bad check(s) not OK: /retro $slug"
+    suggest_faulty="${suggest_faulty:-$slug}"
+  elif [ "$claimed" = true ]; then
+    state=claimed detail="all checks OK"
+  elif [ -n "$pr_merged" ]; then
+    state=merged detail="PR $pr_merged merged: /verify $slug, then a person claims"
+    suggest_merged="${suggest_merged:-$slug}"
+  elif [ -n "$pr_open" ]; then
+    open_d="$(git show "origin/feat/$slug:workflow/specs/$slug.md" 2>/dev/null | grep -c UNCONFIRMED || true)"
+    state=in-review detail="PR $pr_open waiting for a person's review, ${open_d:-0} decision(s) to confirm"
+  elif grep -qx "feat/$slug" <<<"$branches"; then
+    state=in-progress detail="branch feat/$slug on origin"
+  else
+    state=new detail="/spec $slug"
+    suggest_new="${suggest_new:-$slug}"
+  fi
+  printf '%-16s %-16s %-6s %s\n' "$slug" "$state" "$kind" "$detail"
+done < <(jq -r '.features[] | [.slug, .claimed, ([.checks[]? | select(.status != "OK")] | length)] | @tsv' <<<"$feedback")
+
+echo
+echo "Tick $tick. Score: $(jq -r '.score | "\(.total) (earned \(.earned), bled \(.bled))"' <<<"$feedback")$(jq -r 'if .down.current then ", SERVICE DOWN: \(.down.reason)" else "" end' <<<"$feedback")"
+if [ -n "$changed" ]; then echo "Specs changed since last fetch:$changed  (check what we built against them)"; fi
+if [ -n "$suggest_faulty" ]; then
+  echo "Suggested: /retro $suggest_faulty  (a claimed feature is failing checks and costing points)"
+elif [ -n "$suggest_merged" ]; then
+  echo "Suggested: /verify $suggest_merged  (merged, so evidence then a claim is the shortest path to points)"
+elif [ -n "$suggest_new" ]; then
+  echo "Suggested: /spec $suggest_new, then /build $suggest_new  (the oldest released feature nobody is on)"
+else
+  echo "Suggested: nothing to start; check the in-review PRs."
+fi

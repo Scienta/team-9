@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+# Gathers the evidence a person needs before claiming a feature, against the DEPLOYED service:
+#   1. GET /health answers 200 with origin/main's SHA, so what we test is what we merged.
+#   2. Every examples/*.hurl passes against the live URL (the feature's own file and every other
+#      feature's, so a regression in something already claimed shows up here too).
+#   3. The logs since the deploy have no ERROR lines or stack traces.
+# Prints a Markdown evidence block for the claim log and exits non-zero if any step failed.
+#
+# Usage: workflow/bin/verify <slug> [base-url]   (default: the team URL)
+# Never claims anything: a person does that on the harness.
+set -euo pipefail
+
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+cd "$root"
+slug="${1:?usage: verify <slug> [base-url]}"
+team="$(tr -d '[:space:]' <.fagdag/team)"
+base="${2:-https://fagsem-h2026-$team.scienta.cloud}"
+failed=0
+out="$(mktemp)"; trap 'rm -f "$out"' EXIT
+
+git fetch -q origin main
+sha="$(git rev-parse origin/main)"
+health="$(curl -sS -m 10 "$base/health" || true)"
+live="$(jq -r '.version // empty' <<<"$health" 2>/dev/null || true)"
+if [ "$live" = "$sha" ]; then
+  health_line="OK: /health reports $sha (origin/main)"
+else
+  health_line="FAIL: /health reports '${live:-?}', origin/main is $sha (deploy not finished or failed?)"
+  failed=1
+fi
+
+if [ ! -f "examples/$slug.hurl" ]; then
+  hurl_line="FAIL: examples/$slug.hurl doesn't exist"
+  failed=1
+elif HURL="$root/workflow/bin/hurl" examples/run.sh "$base" >"$out" 2>&1; then
+  hurl_line="OK: $(grep -E '^Executed (files|requests)' "$out" | tr '\n' ' ' | tr -s ' ')all passed"
+else
+  hurl_line="FAIL: $(grep -E '^(Failed files|Succeeded files)' "$out" | tr '\n' ' ')"
+  failed=1
+fi
+
+since="$(git log -1 --format=%cI origin/main | xargs -I{} date -u -d {} +%Y-%m-%dT%H:%M:%SZ)"
+# Only real errors: ERROR-level lines and stack frames. WARN lines for rejected input (a 400) are expected.
+errors="$(.github/fagdag/logs.sh --tail 2000 --since "$since" 2>/dev/null |
+  sed 's/^[^ ]* //' | jq -r '.message // empty' 2>/dev/null | grep -E '^[0-9-]+ [0-9:.]+ +ERROR |^Caused by|^\s+at ' | cut -c1-300 | head -20 || true)"
+if [ -z "$errors" ]; then
+  logs_line="OK: no ERROR lines or stack traces in the logs since $since"
+else
+  logs_line="CHECK: $(wc -l <<<"$errors") ERROR/stack-trace line(s) since $since (shown below)"
+fi
+
+cat <<EOF
+### Evidence for $slug ($(date -u +%Y-%m-%dT%H:%MZ))
+
+- Deployed: $health_line
+- Hurl against $base: $hurl_line
+- Logs: $logs_line
+EOF
+if [ -n "$errors" ]; then printf '\n```\n%s\n```\n' "$errors"; fi
+if [ "$failed" != 0 ]; then
+  printf '\nHurl output (tail):\n```\n%s\n```\n' "$(tail -40 "$out")"
+  echo "NOT READY TO CLAIM." >&2
+fi
+exit "$failed"
