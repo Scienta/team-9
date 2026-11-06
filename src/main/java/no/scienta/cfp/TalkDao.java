@@ -1,7 +1,12 @@
 package no.scienta.cfp;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
@@ -12,7 +17,11 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 @Repository
 public class TalkDao {
 
-    private static final String COLUMNS = "id, title, format, duration, level, status, speaker_id, submitted_at";
+    // Each talk with its rating count and total, so a list is one query rather than one more per talk.
+    private static final String SELECT = "SELECT t.id, t.title, t.format, t.duration, t.level, t.status, t.speaker_id, "
+            + "t.submitted_at, COALESCE(r.cnt, 0) AS rating_count, COALESCE(r.total, 0) AS rating_total FROM talk t "
+            + "LEFT JOIN (SELECT talk_id, COUNT(*) AS cnt, SUM(score) AS total FROM rating GROUP BY talk_id) r "
+            + "ON r.talk_id = t.id";
 
     private final JdbcTemplate jdbc;
 
@@ -28,6 +37,8 @@ public class TalkDao {
         long millis = rs.getLong("submitted_at");
         t.submittedAt = new Date(millis);
         t.submittedOn = Utils.toUtcDate(millis);
+        t.ratingCount = rs.getInt("rating_count");
+        t.averageRating = average(rs.getLong("rating_total"), t.ratingCount);
         return t;
     };
 
@@ -36,16 +47,16 @@ public class TalkDao {
     }
 
     public TalkDto findById(long id) {
-        List<TalkDto> list = jdbc.query("SELECT " + COLUMNS + " FROM talk WHERE id = ?", mapper, id);
+        List<TalkDto> list = jdbc.query(SELECT + " WHERE t.id = ?", mapper, id);
         return list.isEmpty() ? null : list.get(0);
     }
 
     public List<TalkDto> findBySpeaker(long speakerId) {
-        return jdbc.query("SELECT " + COLUMNS + " FROM talk WHERE speaker_id = ? ORDER BY id", mapper, speakerId);
+        return jdbc.query(SELECT + " WHERE t.speaker_id = ? ORDER BY t.id", mapper, speakerId);
     }
 
     public List<TalkDto> findAll() {
-        return jdbc.query("SELECT " + COLUMNS + " FROM talk ORDER BY id", mapper);
+        return jdbc.query(SELECT + " ORDER BY t.id", mapper);
     }
 
     /**
@@ -63,6 +74,27 @@ public class TalkDao {
     public List<Long> coSpeakerIds(long talkId) {
         return jdbc.queryForList("SELECT speaker_id FROM talk_co_speaker WHERE talk_id = ? ORDER BY added_order",
                 Long.class, talkId);
+    }
+
+    /** The co-speakers of every given talk, in the order they were added, in one query. Talks without any are absent. */
+    public Map<Long, List<Long>> coSpeakerIds(List<Long> talkIds) {
+        Map<Long, List<Long>> byTalk = new HashMap<>();
+        if (talkIds.isEmpty()) {
+            return byTalk;
+        }
+        jdbc.query("SELECT talk_id, speaker_id FROM talk_co_speaker WHERE talk_id = ANY (?) ORDER BY added_order",
+                rs -> {
+                    byTalk.computeIfAbsent(rs.getLong("talk_id"), k -> new ArrayList<>()).add(rs.getLong("speaker_id"));
+                }, (Object) talkIds.toArray(new Long[0]));
+        return byTalk;
+    }
+
+    // 1 decimal, half up (4.25 -> 4.3); null when nobody has rated the talk
+    static Double average(long total, int count) {
+        if (count == 0) {
+            return null;
+        }
+        return BigDecimal.valueOf(total).divide(BigDecimal.valueOf(count), 1, RoundingMode.HALF_UP).doubleValue();
     }
 
     // Call only while holding the talk row lock in a transaction. ON CONFLICT keeps a duplicate a no-op at the

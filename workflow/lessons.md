@@ -166,3 +166,18 @@ change made so it can't recur silently (with the file changed). Number them `L1`
   request must not break another rule too. `workflow/bin/check-hurl-statuses` now says which
   statuses it exempts instead of listing them as covered. Fixed with a test-first regression in
   `SchedulingTest#laterChangesLeaveTheProgramme` (failed with 409 before the fix) and Hurl "D6".
+
+## L11: every list of talks ran two queries per talk; GET /talks took 18-34 s in production (tick ~115)
+
+- **What happened:** after the Boot 4 deploy, `GET /talks` took 18-34 s and `/admin/stats` 23-40 s
+  (often over the 30 s client timeout) on ~3600 talks, while single reads took 0.15 s. Not Boot 4: the
+  2.7 and 4.x builds were equally slow on the same data locally. `ConferenceService.addRatings` read
+  each talk's co-speakers and rating stats with their own queries (≈7200 per list), `/admin/stats`
+  looked each talk's speaker up again, and the CSV did too; each query is a network round trip to the
+  Scaleway database, and the harness adds talks every tick.
+- **Root cause:** nothing measured how the number of queries grows with the data. Every test ran on a
+  handful of rows, where N+1 is invisible, and the base code's N+1 was inherited unnoticed.
+- **Should have been caught by:** `/build` (review-edge and review-regress for any list endpoint).
+- **Harness change:** `ListQueriesTest` counts the SQL statements a request runs on the app's own
+  DataSource (fails on the old code at 61-91 statements for 30 talks; passes at ≤ 5), and is the
+  pattern for new list endpoints. `workflow/checklists/review.md` asks for it.
