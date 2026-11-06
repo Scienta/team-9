@@ -228,9 +228,11 @@ class SchedulingTest {
             HttpResponse<String> res = send("PUT", "/programme/R1/S1", body);
             assertEquals(400, res.statusCode(), body + " -> " + res.body());
         }
+        // D3: a talkId in the body that doesn't exist is 400 (scheduling/check-1, lessons.md L13).
         HttpResponse<String> unknown = send("PUT", "/programme/R1/S1", "{\"talkId\":999999}");
-        assertEquals(404, unknown.statusCode(), unknown.body());
-        assertEquals(404, send("PUT", "/programme/R1/S1", "{\"talkId\":9223372036854775807}").statusCode());
+        assertEquals(400, unknown.statusCode(), unknown.body());
+        assertEquals(400, send("PUT", "/programme/R3/S1", "{\"talkId\":2065989499}").statusCode());
+        assertEquals(400, send("PUT", "/programme/R1/S1", "{\"talkId\":9223372036854775807}").statusCode());
         // A place that doesn't exist before the talkId's value and the talk (D9).
         assertEquals(404, send("PUT", "/programme/R4/S1", "{\"talkId\":\"x\"}").statusCode());
         assertEquals(404, send("PUT", "/programme/R4/S1", "{\"talkId\":999999}").statusCode());

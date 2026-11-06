@@ -36,7 +36,7 @@ public class ProgrammeService {
         try {
             TalkDto talk = talkDao.findById(talkId);
             if (talk == null) {
-                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "talk not found");
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "talk " + talkId + " does not exist"); // D3
             }
             programmeDao.lockSlot(slot);
             Long current = programmeDao.talkAt(room, slot);

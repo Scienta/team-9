@@ -196,3 +196,20 @@ change made so it can't recur silently (with the file changed). Number them `L1`
   the path that isn't one of the values is 404 (the path names nothing), in the body or query it
   stays 400. Fix: 404 on PUT, GET and DELETE; `SchedulingTest#badInputIsRejectedAndChangesNothing`
   and `examples/scheduling.hurl` "D1" replay `PUT /programme/R4/S1`. `REVIEW.md` section 4.
+
+## L13: an unknown talkId in the body answered 404, and scheduling/check-1 stayed FAULTY after the L12 fix (tick 148)
+
+- **What happened:** with L12's fix deployed, check-1 got further: unknown rooms and slots
+  answered 404 and passed, `{"talkId": true}` answered 400 and passed, then
+  `PUT /programme/R3/S1 {"talkId": 2065989499}` (no such talk) answered 404 and was rejected.
+- **Root cause:** the house convention said "400 for an id in the body that doesn't exist, unless
+  the request makes it the subject of the action". D3 took the exception. The harness, like
+  `POST /talks` with an unknown `speakerId`, wants 400 for any id in the body. The exception was a
+  judgement call the conventions invited, with nothing to anchor it.
+- **Also:** the L12 fix only replayed the transcript up to the request that failed. A FAULTY check
+  stops at its first failure, so the rest of the check was unseen; the fix should have asked what
+  else the check would send next (every other gap in the same decision table).
+- **Should have been caught by:** `/spec` (D3), and the L12 retro (one fix for the whole table).
+- **Harness change:** `workflow/checklists/spec-questions.md`: an id in the body that doesn't exist
+  is always 400. `SchedulingTest#badInputIsRejectedAndChangesNothing` and `examples/scheduling.hurl`
+  "D3" replay the harness's request. `REVIEW.md` section 4.

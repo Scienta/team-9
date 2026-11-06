@@ -32,8 +32,8 @@ Status: in-review
 | Method and path | Status | When |
 |---|---|---|
 | `PUT /programme/{room}/{slot}` | 200 | the talk is there; body is the `Entry`. Also when this exact talk is already in this exact place (D6) |
-| | 400 | body missing or not JSON; `talkId` missing, null, not a whole number (string, decimal, boolean) or < 1 (D2) |
-| | 404 | `{room}` or `{slot}` isn't one of the values, case-sensitive (D1); no talk with that `talkId` (D3) |
+| | 400 | body missing or not JSON; `talkId` missing, null, not a whole number (string, decimal, boolean) or < 1 (D2); no talk with that `talkId` (D3) |
+| | 404 | `{room}` or `{slot}` isn't one of the values, case-sensitive (D1) |
 | | 409 | the talk isn't `ACCEPTED` (D4); a workshop outside `S4` (D5); another talk is in this place (R5); the talk is already somewhere else (R6, D6); one of its speakers already speaks in this slot (R7) |
 | | 503 | the slot stayed locked for 2 s (`Retry-After: 1`, as co-speakers). Nothing changes. |
 | `GET /programme/{room}/{slot}` | 200 | the `Entry` in this place |
@@ -57,8 +57,9 @@ No existing response changes: `Talk` gets no new field.
 - **D2** `talkId` must be a JSON whole number ≥ 1. A string (`"5"`), decimal (`5.5` or `5.0`),
   boolean, null or missing `talkId` → 400 (house convention: wrong type; lessons.md L5 on Jackson
   coercion). Extra fields are ignored. `CONFIRMED by Henrik Otgard`
-- **D3** `talkId` that doesn't exist → 404, not 400: the talk is the subject of the action (the
-  house convention's exception for body ids). `CONFIRMED by Henrik Otgard`
+- **D3** `talkId` that doesn't exist → 400, as `POST /talks` does with an unknown `speakerId` (house
+  convention: an id in the body). Was 404 ("the talk is the subject of the action"), and
+  scheduling/check-1 went FAULTY on it at tick 148 (lessons.md L13). `CONFIRMED by Henrik Otgard`
 - **D4** A talk that isn't `ACCEPTED` (`SUBMITTED`, `WAITLISTED`, `REJECTED`, `WITHDRAWN`) → 409
   (house convention: the state forbids it). `CONFIRMED by Henrik Otgard`
 - **D5** A workshop in any slot but `S4` → 409: the request is well-formed, the rule forbids it.
@@ -74,7 +75,7 @@ No existing response changes: `Talk` gets no new field.
   `PUT` and `GET`. An empty place, including a second `DELETE`, → 404 (house convention, lessons.md
   L3). `CONFIRMED by Henrik Otgard`
 - **D9** Which checks run first when several fail → body not JSON (400, Spring parses it first),
-  place exists (404), `talkId` value (400), talk exists (404),
+  place exists (404), `talkId` value (400), talk exists (400),
   then the D6 repeat (200), status (409), fit (409), place free (409), talk not elsewhere (409),
   speakers (409). Every failure changes nothing. Spring answers 415 for a non-JSON `Content-Type`
   before any of these. `CONFIRMED by Henrik Otgard`

@@ -51,7 +51,8 @@ Our default answers, so every feature behaves the same way. A DECISION that foll
   same as the wrong state; and a **read** of it is **200** with what's there (an empty list), not
   404. Answer the read and the write separately (lessons.md L9).
 - **400** for an id in the **body** that doesn't exist (as `POST /talks` does with `speakerId`),
-  unless the request makes it the subject of the action. Write down which applies.
+  **always**, also when the id names the thing the action is about. The harness checks this: 404
+  for an unknown `talkId` in `PUT /programme/{room}/{slot}` failed scheduling/check-1 (lessons.md L13).
 - **409** for a well-formed request the current state forbids: a limit reached, an illegal state
   transition, a duplicate.
 - **403** only if the request explicitly has an owner and the caller is someone else; otherwise 409.
