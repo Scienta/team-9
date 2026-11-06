@@ -235,6 +235,22 @@ change made so it can't recur silently (with the file changed). Number them `L1`
   `#fullProgrammeTakesAFixedNumberOfQueries` (fails at 17 statements with a per-row query), and a
   `Content-Disposition` assert in JUnit and Hurl.
 
+## L15: two green PRs merged into a main whose tests didn't compile (tick ~170)
+
+- **What happened:** PR #23 (cpu-perf) gave `RequestLoggingFilter` a `RuntimeMetrics` constructor
+  argument; PR #7 (mutation-testing), branched earlier, added `RequestLoggingFilterTest` calling the
+  old no-argument constructor. Each PR's CI was green against the main it was built on; merged
+  minutes apart, main's tests no longer compiled, so the deploy gate blocked every deploy.
+  `RuntimeMetricsTest` also failed on a machine with a Norwegian locale (`0,500`): the metrics
+  formatted numbers with the default locale.
+- **Root cause:** CI tests a PR against the main it was branched from, not the main it merges into;
+  nothing makes a PR re-run on top of a main that moved. Locale: `String.format` without a locale.
+- **Should have been caught by:** the merge (an up-to-date branch requirement), and `/build`'s
+  local gate run on a non-English machine.
+- **Harness change:** fixed the test (a mocked `RuntimeMetrics`) and the formatting
+  (`Locale.ROOT`). Still needed from a person: branch protection on `main` with "Require branches
+  to be up to date before merging" (or a merge queue), so a PR's checks run on the main it lands on.
+
 ## L16: reviewers caught a floating-point stats mean and tests that couldn't tell exact from float rounding (ratings-cr, build)
 
 - **What happened:** the first build of ratings-cr passed every local gate. The reviewers then found:

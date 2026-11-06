@@ -10,6 +10,7 @@ import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -152,7 +153,7 @@ public class RuntimeMetrics implements SmartLifecycle {
             return parts[0];
         }
         try {
-            return String.format("%.3f", Double.parseDouble(parts[0]) / Double.parseDouble(parts[1]));
+            return String.format(Locale.ROOT, "%.3f", Double.parseDouble(parts[0]) / Double.parseDouble(parts[1]));
         } catch (NumberFormatException e) {
             return null;
         }
@@ -211,7 +212,7 @@ public class RuntimeMetrics implements SmartLifecycle {
         long jit = jitMillis();
 
         Map<String, Object> m = new LinkedHashMap<>();
-        m.put("s", String.format("%.1f", seconds));
+        m.put("s", String.format(Locale.ROOT, "%.1f", seconds));
         m.put("reqs", lat.length);
         if (lat.length > 0) {
             Arrays.sort(lat);
@@ -221,7 +222,7 @@ public class RuntimeMetrics implements SmartLifecycle {
         }
         if (processCpu >= 0 && lastProcessCpuNanos >= 0 && seconds > 0) {
             // CPU seconds per wall second: 0.50 means half a CPU on average.
-            m.put("cpu", String.format("%.2f", (processCpu - lastProcessCpuNanos) / 1e9 / seconds));
+            m.put("cpu", String.format(Locale.ROOT, "%.2f", (processCpu - lastProcessCpuNanos) / 1e9 / seconds));
         }
         long throttled = delta(cpuStat, "nr_throttled");
         if (cpuStat.containsKey("nr_periods")) {

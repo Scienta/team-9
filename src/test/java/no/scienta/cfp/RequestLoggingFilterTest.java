@@ -3,6 +3,7 @@ package no.scienta.cfp;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
@@ -25,7 +26,8 @@ class RequestLoggingFilterTest {
     private static final String ERROR_ATTRIBUTE = DefaultErrorAttributes.class.getName() + ".ERROR";
     private static final Pattern LINE = Pattern.compile("(\\S+ \\S+) -> (\\d+) \\((\\d+) ms\\) req=(.*?)( res=(.*))?");
 
-    private final RequestLoggingFilter filter = new RequestLoggingFilter();
+    // RuntimeMetrics only counts request latencies here; a mock keeps this a plain unit test (no DataSource).
+    private final RequestLoggingFilter filter = new RequestLoggingFilter(mock(RuntimeMetrics.class));
 
     @Test
     void logsMethodPathQueryStatusDurationAndBody() throws Exception {
