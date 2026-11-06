@@ -1,7 +1,7 @@
 # Workshop registration (`workshop-registration`)
 
 Feature request: [`specs/workshop-registration.md`](../../specs/workshop-registration.md), version 2.
-Status: building
+Status: in-review
 
 ## Rules
 
@@ -26,13 +26,16 @@ Status: building
 | Method and path | Status | When |
 |---|---|---|
 | `POST /workshops/{id}/registrations` | 201 | registered; body is the `Registration` |
-| | 400 | body missing or not JSON; `name` missing, null or blank; `email` missing, null, blank or not an email (D1); non-numeric `{id}` |
+| | 400 | body missing or not JSON; `name` missing, null, blank, not a JSON string (D9) or containing a NUL character; `email` missing, null, blank, not a JSON string (D9) or not an email (D1); non-numeric `{id}`. Checked before the workshop is looked up (D10). |
 | | 404 | no talk with that id, or the talk isn't a `WORKSHOP` (D2) |
 | | 409 | the workshop isn't `ACCEPTED` (D3); 20 registrations already (D4); this email (any case) is already registered for it (D5) |
-| | 503 | the workshop row stayed locked for 2 s (`Retry-After: 1`, as co-speakers) |
+| | 503 | the workshop row stayed locked for 2 s (`Retry-After: 1`, as co-speakers). Test: `#lockedWorkshopAnswers503AndChangesNothing` |
 | `GET /workshops/{id}/registrations` | 200 | the list, oldest first; `[]` when none; for any status of the workshop (D6) |
 | | 400 | non-numeric `{id}` |
 | | 404 | no talk with that id, or the talk isn't a `WORKSHOP` (D2) |
+
+Framework defaults, as on every other endpoint: 415 for a `Content-Type` that isn't JSON, 405 for
+any other method on the path.
 
 No existing response changes: `Talk` gets no new field.
 
@@ -56,6 +59,12 @@ No existing response changes: `Talk` gets no new field.
   normalisation (whitespace is already rejected by `@Email`). Stored and returned as typed. `UNCONFIRMED`
 - **D8** Registration ids come from one sequence across all workshops; the list is ordered by it,
   which is registration order. `UNCONFIRMED`
+- **D9** `name` or `email` given as a number, boolean, array or object → 400 (house convention:
+  wrong type). Jackson would otherwise turn `123` into `"123"` and store it. Stricter than speaker
+  registration, which still coerces. `UNCONFIRMED`
+- **D10** A bad body on an unknown or non-workshop id → 400, not 404: the body is validated before
+  the workshop is looked up, as Spring does for every endpoint. `UNCONFIRMED`
+- **D11** Who may register → anyone; the request has no owner or caller identity. `UNCONFIRMED`
 
 ## Concurrency and data
 
@@ -71,3 +80,7 @@ No existing response changes: `Talk` gets no new field.
 ## Out of scope
 
 Cancelling a registration, changing the 20-seat capacity, and showing registrations on `Talk`.
+
+Known limits, the same as speaker registration: no length limit on `name`; a name of only
+non-breaking spaces passes `@NotBlank`; letter case beyond ASCII (`ÅSE` vs `åse`) follows the
+database's locale for `lower()`.

@@ -9,7 +9,8 @@ PR. `/retro` adds items when a review let something through: say where it came f
 - [ ] Every DECISION is implemented as written, and tested.
 - [ ] Every endpoint in the request exists with the exact path, method and JSON field names.
 - [ ] Every status code in the team spec's API table is produced, and none other.
-- [ ] `examples/<slug>.hurl` has a request per rule and per error status.
+- [ ] `examples/<slug>.hurl` has a request per rule and per error status (`workflow/bin/check-hurl-statuses`
+      checks the statuses; check the rules by reading, and every distinct 400 case, lessons.md L5).
 
 ## Edge cases and concurrency (`review-edge`)
 

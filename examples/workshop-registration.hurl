@@ -66,6 +66,43 @@ POST {{base_url}}/workshops/{{workshop_id}}/registrations
 { "name": "Bad Email", "email": "not-an-email" }
 HTTP 400
 
+POST {{base_url}}/workshops/{{workshop_id}}/registrations
+{ "name": null, "email": "null-name-{{newUuid}}@example.com" }
+HTTP 400
+
+POST {{base_url}}/workshops/{{workshop_id}}/registrations
+{ "name": "Null Email", "email": null }
+HTTP 400
+
+POST {{base_url}}/workshops/{{workshop_id}}/registrations
+{ "name": "Blank Email", "email": "  " }
+HTTP 400
+
+# D9: a wrong JSON type is a 400, not turned into a string
+POST {{base_url}}/workshops/{{workshop_id}}/registrations
+{ "name": 123, "email": "number-{{newUuid}}@example.com" }
+HTTP 400
+
+# A body that isn't JSON, and no body
+POST {{base_url}}/workshops/{{workshop_id}}/registrations
+Content-Type: application/json
+```
+not json
+```
+HTTP 400
+
+POST {{base_url}}/workshops/{{workshop_id}}/registrations
+Content-Type: application/json
+HTTP 400
+
+# A path id that isn't a number
+POST {{base_url}}/workshops/abc/registrations
+{ "name": "Path", "email": "path-{{newUuid}}@example.com" }
+HTTP 400
+
+GET {{base_url}}/workshops/abc/registrations
+HTTP 400
+
 # R6, D7: the list, in registration order, email as typed
 GET {{base_url}}/workshops/{{workshop_id}}/registrations
 HTTP 200

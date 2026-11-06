@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# Every status code in a team spec's API table must have at least one request in the feature's Hurl
+# file, because the Hurl file is what bin/verify runs against production before anyone claims.
+# Statuses that can't be produced from outside on demand are exempt: 503 (needs a held lock) and the
+# framework defaults 405/415. Exits 1 and lists the missing codes. (workflow/lessons.md L5)
+#
+# Usage: workflow/bin/check-hurl-statuses <slug> [team-spec] [hurl-file]
+set -euo pipefail
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+slug="${1:?usage: check-hurl-statuses <slug> [team-spec] [hurl-file]}"
+spec="${2:-$root/workflow/specs/$slug.md}"
+hurl="${3:-$root/examples/$slug.hurl}"
+[ -f "$spec" ] || { echo "no team spec: $spec" >&2; exit 1; }
+[ -f "$hurl" ] || { echo "no Hurl file: $hurl" >&2; exit 1; }
+
+# The API table's status column: rows like "| `POST /x` | 201 | ..." or "| | 400 | ...".
+in_spec="$(sed -n '/^## API/,/^## /p' "$spec" | grep -oE '^\| [^|]*\| [1-5][0-9]{2} \|' | grep -oE '[1-5][0-9]{2}' | sort -u)"
+in_hurl="$(grep -oE '^HTTP [1-5][0-9]{2}' "$hurl" | grep -oE '[0-9]+' | sort -u)"
+missing=""
+for code in $in_spec; do
+  case "$code" in 503|405|415) continue ;; esac
+  grep -qx "$code" <<<"$in_hurl" || missing="$missing $code"
+done
+if [ -n "$missing" ]; then
+  echo "$hurl has no request answering:$missing (statuses from the API table in $spec)"
+  exit 1
+fi
+echo "$hurl covers every status in the API table ($(tr '\n' ' ' <<<"$in_spec"| sed 's/ $//'))."

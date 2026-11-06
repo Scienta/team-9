@@ -8,7 +8,10 @@ from (`lessons.md#L<n>`).
 
 1. **Unknown ids.** Each id in the path or body that doesn't exist: which status? (talk, speaker, ...)
 2. **Malformed input.** Missing body, missing field, `null`, wrong type, empty or blank string,
-   wrong case for an enum, extra fields, non-numeric path id.
+   wrong case for an enum, extra fields, non-numeric path id. Two that pass Spring's defaults
+   silently (lessons.md L5): a **number or boolean where a string is expected** (Jackson turns `123`
+   into `"123"`: use `StrictStringDeserializer` on the field) and a **NUL character** in a string
+   (Postgres refuses it at the insert, a 500: reject it with `@Pattern(regexp = "[^\\x00]*")`).
 3. **Limits.** Every "at most N" / "at least N": what happens at N, at N+1, and does it hold under
    concurrent requests?
 4. **Idempotency.** Doing the same thing twice: a no-op returning 200, or an error? Answer it

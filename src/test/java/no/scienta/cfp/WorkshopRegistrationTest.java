@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.net.URI;
+import java.sql.Connection;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -28,8 +29,10 @@ class WorkshopRegistrationTest {
 
     @DynamicPropertySource
     static void database(DynamicPropertyRegistry registry) {
-        TestDatabase.fresh(registry);
+        database = TestDatabase.fresh(registry);
     }
+
+    private static String database;
 
     @Value("${local.server.port}")
     int port;
@@ -67,10 +70,12 @@ class WorkshopRegistrationTest {
         long waitlisted = workshop();
         assertEquals(200, send("PUT", "/talks/" + waitlisted + "/status", "{\"status\":\"WAITLISTED\"}").statusCode());
         register(waitlisted, "A", unique("a"), 409);
+        assertEquals(0, list(waitlisted, 200).size());
 
         long rejected = workshop();
         assertEquals(200, send("PUT", "/talks/" + rejected + "/status", "{\"status\":\"REJECTED\"}").statusCode());
         register(rejected, "A", unique("a"), 409);
+        assertEquals(0, list(rejected, 200).size());
 
         long presentation = accept(talk(speaker(), "PRESENTATION"));
         register(presentation, "A", unique("a"), 404);
@@ -103,23 +108,25 @@ class WorkshopRegistrationTest {
         assertEquals(20, list(workshop, 200).size());
     }
 
-    // R4 under a rush
+    // R4 under a rush. Several rounds: with the lock removed, a single round let 21+ through in only 2 runs of 3.
     @Test
     void rushNeverExceedsTwentySeats() throws Exception {
-        long workshop = acceptedWorkshop();
-        List<CompletableFuture<HttpResponse<String>>> sent = new ArrayList<>();
-        for (int i = 0; i < 40; i++) {
-            sent.add(async(workshop, "{\"name\":\"Rush " + i + "\",\"email\":\"" + unique("rush" + i) + "\"}"));
+        for (int round = 0; round < 5; round++) {
+            long workshop = acceptedWorkshop();
+            List<CompletableFuture<HttpResponse<String>>> sent = new ArrayList<>();
+            for (int i = 0; i < 40; i++) {
+                sent.add(async(workshop, "{\"name\":\"Rush " + i + "\",\"email\":\"" + unique("rush" + i) + "\"}"));
+            }
+            int created = 0, full = 0;
+            for (CompletableFuture<HttpResponse<String>> future : sent) {
+                HttpResponse<String> response = future.join();
+                assertTrue(response.statusCode() == 201 || response.statusCode() == 409, response.statusCode() + " " + response.body());
+                if (response.statusCode() == 201) created++; else full++;
+            }
+            assertEquals(20, created, "round " + round);
+            assertEquals(20, full, "round " + round);
+            assertEquals(20, list(workshop, 200).size(), "round " + round);
         }
-        int created = 0, full = 0;
-        for (CompletableFuture<HttpResponse<String>> future : sent) {
-            HttpResponse<String> response = future.join();
-            assertTrue(response.statusCode() == 201 || response.statusCode() == 409, response.statusCode() + " " + response.body());
-            if (response.statusCode() == 201) created++; else full++;
-        }
-        assertEquals(20, created);
-        assertEquals(20, full);
-        assertEquals(20, list(workshop, 200).size());
     }
 
     // R5, D5, D7
@@ -191,12 +198,34 @@ class WorkshopRegistrationTest {
                 "{\"name\":\"X\",\"email\":null}",
                 "{\"name\":\"X\",\"email\":\"\"}",
                 "{\"name\":\"X\",\"email\":\"not-an-email\"}",
-                "{\"name\":\"X\",\"email\":\" x@example.com\"}")) {
+                "{\"name\":\"X\",\"email\":\" x@example.com\"}",
+                // Wrong JSON types: Jackson would turn 123 or true into "123"/"true" (review finding E2)
+                "{\"name\":123,\"email\":\"x@example.com\"}",
+                "{\"name\":true,\"email\":\"x@example.com\"}",
+                "{\"name\":\"X\",\"email\":42}",
+                "{\"name\":[\"X\"],\"email\":\"x@example.com\"}",
+                // A NUL character: Postgres refuses it, which was a 500 (review finding E1)
+                "{\"name\":\"A\\u0000B\",\"email\":\"x@example.com\"}")) {
             HttpResponse<String> response = send("POST", path, body);
             assertEquals(400, response.statusCode(), body + " -> " + response.body());
         }
         assertEquals(400, send("POST", "/workshops/abc/registrations", "{\"name\":\"X\",\"email\":\"x@example.com\"}").statusCode());
         assertEquals(400, send("GET", "/workshops/abc/registrations", null).statusCode());
+        assertEquals(0, list(workshop, 200).size());
+    }
+
+    // API table: the workshop row stays locked for 2 s -> 503 with Retry-After: 1, nothing stored (review finding S1)
+    @Test
+    void lockedWorkshopAnswers503AndChangesNothing() throws Exception {
+        long workshop = acceptedWorkshop();
+        try (Connection holder = TestDatabase.connect(database)) {
+            CoSpeakerLocks.lockTalk(holder, workshop);
+            HttpResponse<String> response = send("POST", "/workshops/" + workshop + "/registrations",
+                    "{\"name\":\"Waiting\",\"email\":\"" + unique("waiting") + "\"}");
+            assertEquals(503, response.statusCode(), response.body());
+            assertEquals("1", response.headers().firstValue("Retry-After").orElse(null));
+            holder.rollback();
+        }
         assertEquals(0, list(workshop, 200).size());
     }
 
