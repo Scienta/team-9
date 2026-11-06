@@ -46,7 +46,8 @@ public class RequestLoggingFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
-        ContentCachingRequestWrapper req = new ContentCachingRequestWrapper(request, MAX_BODY);
+        // One byte over the limit, so body() can tell a truncated body from one of exactly MAX_BODY bytes.
+        ContentCachingRequestWrapper req = new ContentCachingRequestWrapper(request, MAX_BODY + 1);
         ContentCachingResponseWrapper res = new ContentCachingResponseWrapper(response);
         long start = System.nanoTime();
         try {

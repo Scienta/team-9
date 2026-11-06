@@ -79,7 +79,13 @@ public class Utils {
     }
 
     public static boolean isValidEmail(String email) {
-        return email != null && email.contains("@") && email.indexOf('@') < email.lastIndexOf('.');
+        // An '@' with a '.' somewhere after it. Same rule as before, written without an index comparison whose
+        // boundary (< vs <=) can't be told apart: '@' and '.' are never at the same index.
+        if (email == null) {
+            return false;
+        }
+        int at = email.indexOf('@');
+        return at != -1 && email.indexOf('.', at) != -1;
     }
 
     public static boolean isEmpty(String s) {
