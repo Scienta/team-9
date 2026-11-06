@@ -1,9 +1,9 @@
 # programme-export
 
 Owner: Jonathan Lillesæter (pi-programme-export)
-State: in-progress
+State: in-review
 Branch: feat/programme-export
-PR: -
+PR: https://github.com/Scienta/team-9/pull/19
 
 ## Log
 
@@ -14,3 +14,4 @@ PR: -
 - 2026-11-06T13:52Z Jonathan Lillesæter (pi-programme-export): reviewers: spec 1 gap+4 nits, edge 2 gaps+2 nits, regress 2 gaps+1 nit; fixed 5 (LEFT JOIN D9, statement-count test, Hurl pre-clean, Content-Disposition test, spec test names), D5 CR-in-title now for PO; merged origin/main (scheduling #15 now merged)
 - 2026-11-06T13:52Z Jonathan Lillesæter (pi-programme-export): gates after fixes: mvnw package 116 tests 0 failures; local hurl 9/9 files 224 reqs pass (programme-export.hurl twice in a row); check-hurl-statuses OK
 - 2026-11-06T13:52Z Jonathan Lillesæter (pi-programme-export): retro L12: inner join without FK drops rows, Hurl cleanup unreachable on failure, stale base missed L11; harness: spec-questions #14, build skill steps 1+3, review.md
+- 2026-11-06T13:53Z Jonathan Lillesæter (pi-programme-export): state -> in-review: PR https://github.com/Scienta/team-9/pull/19, 9 decisions to confirm (D1, D5 for the PO)
