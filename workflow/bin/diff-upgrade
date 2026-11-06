@@ -1,0 +1,249 @@
+#!/usr/bin/env python3
+"""Differential test for a framework upgrade: sends the same request corpus to two running copies of the
+service (each on its own, empty database) and reports every difference in status, key headers and body.
+
+    workflow/bin/diff-upgrade http://localhost:8081 http://localhost:8082     # old, new
+
+Both databases must start empty, so generated ids line up. Timestamps and other clock-dependent values are
+masked before comparing. Exit 0 if no differences, 1 otherwise. Add a request to CORPUS whenever a check or a
+review finds behaviour that the corpus didn't exercise.
+"""
+import json
+import re
+import sys
+import urllib.error
+import urllib.request
+
+J = {"Content-Type": "application/json"}
+
+
+def corpus():
+    # (method, path, body, headers). "{s1}" etc. are filled in from earlier responses (same on both sides).
+    c = []
+    add = lambda m, p, b=None, h=J: c.append((m, p, b, h))
+    # --- speakers
+    add("POST", "/speakers", '{"name":"Ada Lovelace","email":"ada@example.com","bio":"First program."}')
+    add("POST", "/speakers", '{"name":"Grace Hopper","email":"grace@example.com"}')
+    add("POST", "/speakers", '{"name":"Linus","email":"linus@example.com","bio":null}')
+    add("POST", "/speakers/", '{"name":"Slash","email":"slash@example.com"}')
+    add("POST", "/speakers", '{"name":"Dup","email":"ADA@Example.com"}')
+    add("POST", "/speakers", '{"name":"","email":"x@example.com"}')
+    add("POST", "/speakers", '{"name":"  ","email":"x@example.com"}')
+    add("POST", "/speakers", '{"name":"X","email":"not-an-email"}')
+    add("POST", "/speakers", '{"name":"X"}')
+    add("POST", "/speakers", '{"name":null,"email":null}')
+    add("POST", "/speakers", '{"name":"X","email":"long@example.com","bio":"' + "b" * 501 + '"}')
+    add("POST", "/speakers", '{"name":"X","email":"max@example.com","bio":"' + "b" * 500 + '"}')
+    add("POST", "/speakers", '{"name":"Comment", /* legacy client */ "email":"comment@example.com"} // trailing')
+    add("POST", "/speakers", '{"name":"Trailing","email":"trailing@example.com"} {"x":1}')
+    add("POST", "/speakers", '{"name":"Extra","email":"extra@example.com","twitter":"@x"}')
+    add("POST", "/speakers", '{"name":42,"email":"num@example.com"}')
+    add("POST", "/speakers", '{"name":["a"],"email":"arr@example.com"}')
+    add("POST", "/speakers", '{"name":"Æøå 🎤","email":"unicode@example.com","bio":"Ærlig talt"}')
+    add("POST", "/speakers", "not json")
+    add("POST", "/speakers", "")
+    add("POST", "/speakers", "[]")
+    add("POST", "/speakers", '{"name":"X","email":"ct@example.com"}', {"Content-Type": "text/plain"})
+    add("POST", "/speakers", '{"name":"X","email":"noct@example.com"}', {})
+    add("POST", "/speakers", '{"name":"X","email":"accept@example.com"}', {**J, "Accept": "application/xml"})
+    add("GET", "/speakers/1")
+    add("GET", "/speakers/1/")
+    add("GET", "/speakers/2")
+    add("GET", "/speakers/999999")
+    add("GET", "/speakers/abc")
+    add("GET", "/speakers/-1")
+    add("GET", "/speakers/0")
+    add("GET", "/speakers/99999999999999999999")
+    add("GET", "/speakers/1.5")
+    add("GET", "/speakers")
+    add("GET", "/speakers/")
+    add("DELETE", "/speakers/1")
+    add("PUT", "/speakers/2", '{"name":"Grace B. Hopper","email":"grace@example.com","bio":"COBOL"}')
+    add("PUT", "/speakers/2/", '{"name":"Grace Hopper","email":"GRACE@example.com"}')
+    add("PUT", "/speakers/2", '{"name":"Grace","email":"ada@example.com"}')
+    add("PUT", "/speakers/2", '{"name":"","email":"grace@example.com"}')
+    add("PUT", "/speakers/999999", '{"name":"N","email":"n@example.com"}')
+    add("GET", "/speakers/search?q=ace")
+    add("GET", "/speakers/search?q=ACE")
+    add("GET", "/speakers/search")
+    add("GET", "/speakers/search?q=")
+    add("GET", "/speakers/search/?q=ada")
+    # --- talks
+    for i, (fmt, lvl) in enumerate([("LIGHTNING_10", "BEGINNER"), ("LIGHTNING_20", "INTERMEDIATE"),
+                                    ("WORKSHOP", "ADVANCED"), ("PRESENTATION", "BEGINNER")]):
+        add("POST", "/talks", json.dumps({"title": "Talk %d" % i, "format": fmt, "level": lvl, "speakerId": 1}))
+    add("POST", "/talks", '{"title":"T","format":"PRESENTATION","level":"BEGINNER","speakerId":2}')
+    add("POST", "/talks/", '{"title":"Slash","format":"PRESENTATION","level":"BEGINNER","speakerId":2}')
+    add("POST", "/talks", '{"title":"T","format":"PRESENTATION","level":"BEGINNER","speakerId":2,"durationMinutes":5}')
+    add("POST", "/talks", '{"title":"T","format":"presentation","level":"BEGINNER","speakerId":3}')
+    add("POST", "/talks", '{"title":"T","format":"KEYNOTE","level":"BEGINNER","speakerId":3}')
+    add("POST", "/talks", '{"title":"T","format":"PRESENTATION","level":"beginner","speakerId":3}')
+    add("POST", "/talks", '{"title":"","format":"PRESENTATION","level":"BEGINNER","speakerId":3}')
+    add("POST", "/talks", '{"title":"   ","format":"PRESENTATION","level":"BEGINNER","speakerId":3}')
+    add("POST", "/talks", '{"format":"PRESENTATION","level":"BEGINNER","speakerId":3}')
+    add("POST", "/talks", '{"title":"T","format":"PRESENTATION","level":"BEGINNER"}')
+    add("POST", "/talks", '{"title":"T","format":"PRESENTATION","level":"BEGINNER","speakerId":999999}')
+    add("POST", "/talks", '{"title":"T","format":"PRESENTATION","level":"BEGINNER","speakerId":"3"}')
+    add("POST", "/talks", '{"title":"T","format":"PRESENTATION","level":"BEGINNER","speakerId":"abc"}')
+    add("POST", "/talks", '{"title":"T","format":"PRESENTATION","level":"BEGINNER","speakerId":3.7}')
+    add("POST", "/talks", '{"title":"T","format":"PRESENTATION","level":"BEGINNER","speakerId":null}')
+    add("POST", "/talks", '{"title":"T","format":1,"level":"BEGINNER","speakerId":3}')
+    add("POST", "/talks", '{"title":"T", /* c */ "format":"PRESENTATION","level":"BEGINNER","speakerId":3}')
+    add("POST", "/talks", '{"title":"T;with \\"quotes\\"","format":"WORKSHOP","level":"ADVANCED","speakerId":3}')
+    add("POST", "/talks", "{bad")
+    add("GET", "/talks/1")
+    add("GET", "/talks/1/")
+    add("GET", "/talks/999999")
+    add("GET", "/talks/abc")
+    add("GET", "/speakers/1/talks")
+    add("GET", "/speakers/1/talks/")
+    add("GET", "/speakers/999999/talks")
+    add("GET", "/speakers/abc/talks")
+    # --- co-speakers
+    add("PUT", "/talks/1/co-speakers/2")
+    add("PUT", "/talks/1/co-speakers/2")
+    add("PUT", "/talks/1/co-speakers/3/")
+    add("PUT", "/talks/1/co-speakers/4")
+    add("PUT", "/talks/1/co-speakers/1")
+    add("PUT", "/talks/1/co-speakers/999999")
+    add("PUT", "/talks/999999/co-speakers/2")
+    add("PUT", "/talks/abc/co-speakers/2")
+    add("DELETE", "/talks/1/co-speakers/3")
+    add("DELETE", "/talks/1/co-speakers/3")
+    add("DELETE", "/talks/1/co-speakers/1")
+    add("DELETE", "/talks/1/co-speakers/999999")
+    add("GET", "/talks/1")
+    # --- ratings
+    add("PUT", "/talks/1/ratings/1", '{"score":4}')
+    add("PUT", "/talks/1/ratings/2", '{"score":4}')
+    add("PUT", "/talks/1/ratings/3", '{"score":4}')
+    add("PUT", "/talks/1/ratings/4", '{"score":5}')
+    add("PUT", "/talks/1/ratings/4/", '{"score":5}')
+    add("PUT", "/talks/2/ratings/1", '{"score":3}')
+    add("PUT", "/talks/2/ratings/1", '{"score":5}')
+    add("PUT", "/talks/3/ratings/1", '{"score":5}')
+    add("PUT", "/talks/3/ratings/2", '{"score":4}')
+    add("PUT", "/talks/1/ratings/1", '{"score":0}')
+    add("PUT", "/talks/1/ratings/1", '{"score":6}')
+    add("PUT", "/talks/1/ratings/1", '{"score":4.0}')
+    add("PUT", "/talks/1/ratings/1", '{"score":4.5}')
+    add("PUT", "/talks/1/ratings/1", '{"score":"4"}')
+    add("PUT", "/talks/1/ratings/1", '{"score":null}')
+    add("PUT", "/talks/1/ratings/1", '{"score":true}')
+    add("PUT", "/talks/1/ratings/1", '{"score":99999999999}')
+    add("PUT", "/talks/1/ratings/1", '{}')
+    add("PUT", "/talks/1/ratings/1", '')
+    add("PUT", "/talks/1/ratings/1", '[4]')
+    add("PUT", "/talks/1/ratings/0", '{"score":4}')
+    add("PUT", "/talks/1/ratings/-1", '{"score":4}')
+    add("PUT", "/talks/1/ratings/abc", '{"score":4}')
+    add("PUT", "/talks/999999/ratings/1", '{"score":4}')
+    add("GET", "/talks")
+    add("GET", "/talks/")
+    add("GET", "/talks?sort=rating")
+    add("GET", "/talks?sort=RATING")
+    add("GET", "/talks?sort=")
+    add("GET", "/talks?speakerId=1")
+    add("GET", "/talks?speakerId=1&sort=rating")
+    add("GET", "/talks?speakerId=999999")
+    add("GET", "/talks?speakerId=abc")
+    # --- acceptance
+    add("PUT", "/talks/1/status", '{"status":"ACCEPTED"}')
+    add("PUT", "/talks/4/status", '{"status":"ACCEPTED"}')
+    add("PUT", "/talks/2/status", '{"status":"WAITLISTED"}')
+    add("PUT", "/talks/2/status", '{"status":"WAITLISTED"}')
+    add("PUT", "/talks/2/status/", '{"status":"REJECTED"}')
+    add("PUT", "/talks/1/status", '{"status":"accepted"}')
+    add("PUT", "/talks/1/status", '{"status":"SUBMITTED"}')
+    add("PUT", "/talks/1/status", '{"status":1}')
+    add("PUT", "/talks/1/status", '{}')
+    add("PUT", "/talks/1/status", '')
+    add("PUT", "/talks/999999/status", '{"status":"REJECTED"}')
+    add("POST", "/talks/3/withdraw", '{"speakerId":2}')
+    add("POST", "/talks/3/withdraw", '{"speakerId":"1"}')
+    add("POST", "/talks/3/withdraw", '{"speakerId":0}')
+    add("POST", "/talks/3/withdraw", '{}')
+    add("POST", "/talks/3/withdraw", '{"speakerId":1}')
+    add("POST", "/talks/3/withdraw", '{"speakerId":1}')
+    add("POST", "/talks/2/withdraw/", '{"speakerId":1}')
+    add("POST", "/talks/999999/withdraw", '{"speakerId":1}')
+    add("GET", "/speakers/1/talks")
+    # --- admin, actuator, framework behaviour
+    add("GET", "/admin/stats")
+    add("GET", "/admin/talks.csv")
+    add("GET", "/health")
+    add("GET", "/actuator/health")
+    add("GET", "/actuator")
+    add("GET", "/actuator/env")
+    add("GET", "/nope")
+    add("GET", "/")
+    add("PATCH", "/talks/1", '{"title":"x"}')
+    add("DELETE", "/talks/1")
+    add("POST", "/talks/1")
+    add("GET", "/talks/1", None, {"Accept": "application/xml"})
+    add("GET", "/talks/1", None, {"Accept": "text/html"})
+    add("GET", "/nope", None, {"Accept": "text/html"})
+    add("HEAD", "/talks/1")
+    add("OPTIONS", "/talks/1")
+    add("GET", "/talks/1;jsessionid=x")
+    add("GET", "/talks//1")
+    add("GET", "/speakers/1.json")
+    add("GET", "/TALKS/1")
+    return c
+
+
+HEADERS = ["Content-Type", "Retry-After", "Content-Disposition", "Allow", "Location", "Vary"]
+MASKS = [
+    (re.compile(r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}\+00:00'), "<submittedAt>"),
+    (re.compile(r'"timestamp":"[^"]*"'), '"timestamp":"<ts>"'),
+    (re.compile(r'"generated":"[^"]*"'), '"generated":"<ts>"'),
+    (re.compile(r'"submittedOn":"\d{4}-\d{2}-\d{2}"'), '"submittedOn":"<date>"'),
+    (re.compile(r'\d{1,2}/\d{1,2}/\d{2}, \d{1,2}:\d{2} [AP]M'), "<usShort>"),
+    (re.compile(r'"version":"[^"]*"'), '"version":"<v>"'),
+]
+
+
+def send(base, method, path, body, headers):
+    data = None if body is None else body.encode()
+    req = urllib.request.Request(base + path, data=data, method=method, headers=headers)
+    try:
+        with urllib.request.urlopen(req, timeout=20) as r:
+            return r.status, r.headers, r.read().decode("utf-8", "replace")
+    except urllib.error.HTTPError as e:
+        return e.code, e.headers, e.read().decode("utf-8", "replace")
+
+
+def norm(text):
+    for rx, repl in MASKS:
+        text = rx.sub(repl, text)
+    return text
+
+
+def main():
+    if len(sys.argv) != 3:
+        sys.exit(__doc__)
+    old, new = sys.argv[1].rstrip("/"), sys.argv[2].rstrip("/")
+    diffs = 0
+    reqs = corpus()
+    for method, path, body, headers in reqs:
+        a = send(old, method, path, body, headers)
+        b = send(new, method, path, body, headers)
+        problems = []
+        if a[0] != b[0]:
+            problems.append("status %s -> %s" % (a[0], b[0]))
+        for h in HEADERS:
+            if a[1].get(h) != b[1].get(h):
+                problems.append("header %s: %r -> %r" % (h, a[1].get(h), b[1].get(h)))
+        if norm(a[2]) != norm(b[2]):
+            problems.append("body\n      old: %s\n      new: %s" % (norm(a[2])[:600], norm(b[2])[:600]))
+        if problems:
+            diffs += 1
+            print("DIFF %s %s %s" % (method, path, (body or "")[:80]))
+            for p in problems:
+                print("    " + p)
+    print("%d requests, %d with differences" % (len(reqs), diffs))
+    sys.exit(1 if diffs else 0)
+
+
+if __name__ == "__main__":
+    main()

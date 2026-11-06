@@ -18,8 +18,8 @@ import java.util.concurrent.TimeUnit;
 
 import javax.sql.DataSource;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -264,8 +264,8 @@ class CoSpeakersTest {
             TransactionTemplate tx = new TransactionTemplate(transactions);
             DataAccessException e = assertThrows(DataAccessException.class,
                     () -> tx.executeWithoutResult(status -> talkDao.lock(talk)));
-            // Empirical check of Spring 5.3's translation, which the service relies on only loosely (it matches
-            // the SQLSTATE itself): 55P03 -> CannotAcquireLockException.
+            // Empirical check of Spring 5.3's translation, kept on Spring 7 by src/main/resources/sql-error-codes.xml.
+            // The service relies on it only loosely (it matches the SQLSTATE itself): 55P03 -> CannotAcquireLockException.
             assertInstanceOf(CannotAcquireLockException.class, e, e.toString());
             assertEquals("55P03", ((SQLException) e.getMostSpecificCause()).getSQLState());
             assertTrue(LockTimeoutException.isLockNotAvailable(e));

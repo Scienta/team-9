@@ -15,7 +15,8 @@ Status: building
 - **R4** Nothing else changes for users: every base spec (speakers, talks, ratings) and drip feature
   (acceptance, co-speakers) answers the same statuses and bodies as on 2.7, formats included. Tests:
   the whole existing JUnit suite, every `examples/*.hurl`, and a differential run of a request corpus
-  against the 2.7 jar and the 4.x jar (`workflow/bin/diff-upgrade`, see the PR).
+  against the 2.7 jar and the 4.x jar (`workflow/bin/diff-upgrade`: 163 requests, 0 status
+  differences; the remaining body differences are the framework wordings in D5).
 - **R5** Trailing slashes keep working (`/speakers/`, `/speakers/{id}/`, and every other path, as 2.7
   matched them). Spring 6+ turned that off by default. Tests: `UpgradeTest#trailingSlashes`, hurl "R5".
 - **R6** Exact formats survive the Jackson 3 / JDK 25 change: `submittedAt`
@@ -38,9 +39,20 @@ No new or changed endpoints. `GET /actuator/info`: 200 `{"versions":{"java":…,
 - **D4** CI's Java version lives in `deploy.yml`, which a feature branch may not edit
   (`.claude/rules/safety.md`). → A separate PR makes `deploy.yml` read `.java-version`; this PR
   changes `.java-version` to 25. That PR must merge first. `UNCONFIRMED`
-- **D5** Error bodies keep Boot's shape `timestamp, status, error, message, path` (+ `errors` on
-  validation failures). Where Boot 4 words a framework message differently (e.g. 404 for an unknown
-  path), we accept the new wording: no spec defines it. Listed in the PR from the differential run. `UNCONFIRMED`
+- **D6** Spring 6+ stopped translating Postgres SQLSTATEs by vendor code (55P03 became
+  `UncategorizedSQLException`). → Keep 5.3's translation with `src/main/resources/sql-error-codes.xml`
+  (the PostgreSQL entry of Spring's own file), so `DuplicateKeyException`/`CannotAcquireLockException`
+  handling and `CoSpeakersTest` stay as they were. `UNCONFIRMED`
+- **D7** Small 2.7 → 4 differences restored by config, because they're cheap and visible to clients:
+  `charset=UTF-8` on error responses (`CompatibilityConfig`), emoji written as `\uD83C\uDFA4` escapes,
+  `/actuator/health` without the new probe groups, renamed `spring.web.error.*`/`spring.servlet.encoding.*`/
+  `spring.jackson.json.read.*` keys (the old ones are silently ignored on Boot 4). `UNCONFIRMED`
+- **D5** Framework-generated error wording that no spec defines changes with Boot 4 and we accept it
+  (same status, same body shape `timestamp, status, error, message, path`): JSON parse errors no longer
+  quote Jackson internals, type mismatches start `Method parameter 'id': …`, 405/415/missing-param
+  messages are reworded, an unknown path says `No static resource nope.` instead of `No message available`,
+  `errors[]` on a 2-field validation failure may come in another order, and `Allow`/`Vary` headers on
+  405/404 differ slightly. Our own messages (`speaker not found`, …) are unchanged. `UNCONFIRMED`
 
 ## Concurrency and data
 

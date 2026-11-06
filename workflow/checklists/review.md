@@ -31,3 +31,7 @@ PR. `/retro` adds items when a review let something through: say where it came f
 - [ ] No secrets, tokens or `.fagdag/harness-token` contents in the diff.
 - [ ] The PR's commits (`git log origin/main..HEAD`), not just its diff, are all this change: no
       commits carried in from someone's local `main` or another branch (`lessons.md#L4`).
+- [ ] A framework, JDK or library upgrade: `workflow/bin/diff-upgrade <old> <new>` against both builds on
+      empty databases shows no status difference, and every other difference is fixed or listed as a
+      DECISION. Renamed config keys are silently ignored on Spring Boot 4, so run once with
+      `spring-boot-properties-migrator` too (spring-boot-4).
