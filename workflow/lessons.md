@@ -196,3 +196,25 @@ change made so it can't recur silently (with the file changed). Number them `L1`
   the path that isn't one of the values is 404 (the path names nothing), in the body or query it
   stays 400. Fix: 404 on PUT, GET and DELETE; `SchedulingTest#badInputIsRejectedAndChangesNothing`
   and `examples/scheduling.hurl` "D1" replay `PUT /programme/R4/S1`. `REVIEW.md` section 4.
+
+## L13: reviewers caught a dropped row, a Hurl file that could leave production booked, and a stale base in programme-export (build)
+
+- **What happened:** the first build of programme-export passed every local gate. The three
+  reviewers found: an inner `JOIN speaker` dropped a scheduled talk whose main speaker row is
+  missing (`talk.speaker_id` has no foreign key), breaking "one row per scheduled talk"; the Hurl
+  file booked three production places and freed them only at its end, so any failed assert left
+  them taken for the harness's scheduling checks and made our own reruns fail at 409; the branch
+  was behind main and lacked `ListQueriesTest` and L11's checklist item, so the export had no
+  statement-count test; and D4's `Content-Disposition` header had no test.
+- **Root cause:** the spec checklist asked about ordering and where things show, never what a join
+  does with a missing row; `/build` said a Hurl file must "leave production data valid" without
+  saying a failed run stops before its cleanup; and nothing told `/build` to merge main before the
+  gates, so a lesson that landed on main mid-build wasn't in the code or checklists being reviewed.
+- **Should have been caught by:** `/spec` (joins) and `/build` (Hurl cleanup, stale base).
+- **Harness change:** `workflow/checklists/spec-questions.md` item 14 (joins without a foreign key);
+  `.claude/skills/build/SKILL.md` step 1 (clear shared production resources first) and step 3
+  (merge `origin/main` before the gates); `workflow/checklists/review.md` item for both. The fix:
+  `LEFT JOIN` and decision D9 (`ProgrammeExportTest#talkWithoutMainSpeakerRowStillExported`, failed
+  with `[]` before), pre-clearing DELETEs in `examples/programme-export.hurl`,
+  `#fullProgrammeTakesAFixedNumberOfQueries` (fails at 17 statements with a per-row query), and a
+  `Content-Disposition` assert in JUnit and Hurl.

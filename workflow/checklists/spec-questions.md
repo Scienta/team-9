@@ -34,6 +34,9 @@ from (`lessons.md#L<n>`).
     say where it sits in the check order, and check every later state change against it: can the
     resource change after the first call (withdrawn, new members) so a later check rejects the
     repeat? Write the answer into both decisions (lessons.md L10).
+14. **Joins in reads.** A list or export that joins tables: is every joined column backed by a
+    foreign key (`talk.speaker_id` isn't)? If not, an inner join silently drops the row when the
+    other side is missing. Decide what the row shows instead, and use a `LEFT JOIN` (lessons.md L13).
 
 ## House conventions
 
