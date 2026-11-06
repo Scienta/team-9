@@ -43,7 +43,7 @@ import org.springframework.test.context.DynamicPropertySource;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class ListQueriesTest {
 
-    private static final int TALKS = 30;
+    private static final int TALKS = 36;  // 30 rated with a co-speaker, 6 unrated without
     private static final int MAX_STATEMENTS = 5;
     private static final Pattern ID = Pattern.compile("\"id\":(\\d+)");
     static final AtomicInteger STATEMENTS = new AtomicInteger();
@@ -63,7 +63,7 @@ class ListQueriesTest {
     @BeforeAll
     void someTalks() throws Exception {
         String coSpeaker = id(send("POST", "/speakers", speakerJson("Co")));
-        for (int i = 0; i < TALKS / 3; i++) {
+        for (int i = 0; i < 10; i++) {
             speaker = id(send("POST", "/speakers", speakerJson("Main " + i)));
             for (int j = 0; j < 3; j++) {
                 String talk = id(send("POST", "/talks", "{\"title\":\"T" + i + "-" + j
@@ -74,6 +74,13 @@ class ListQueriesTest {
                 send("PUT", "/talks/" + talk + "/co-speakers/" + coSpeaker, null);
             }
         }
+        for (int i = 0; i < 2; i++) {
+            String bare = id(send("POST", "/speakers", speakerJson("Bare " + i)));
+            for (int j = 0; j < 3; j++) {
+                talks.add(id(send("POST", "/talks", "{\"title\":\"U" + i + "-" + j
+                        + "\",\"format\":\"LIGHTNING_10\",\"level\":\"BEGINNER\",\"speakerId\":" + bare + "}")));
+            }
+        }
     }
 
     @Test
@@ -82,6 +89,8 @@ class ListQueriesTest {
         assertEquals(TALKS, count(res.body()), res.body());
         assertTrue(res.body().contains("\"coSpeakerIds\":[" + firstCoSpeaker() + "]"), res.body());
         assertTrue(res.body().contains("\"averageRating\":3.0,\"ratingCount\":2"), res.body());
+        assertTrue(res.body().contains("\"coSpeakerIds\":[],\"durationMinutes\":10,\"status\":\"SUBMITTED\","), res.body());
+        assertTrue(res.body().contains("\"averageRating\":null,\"ratingCount\":0"), res.body());
     }
 
     @Test
@@ -100,7 +109,7 @@ class ListQueriesTest {
     @Test
     void theStatsTakeAFixedNumberOfQueries() throws Exception {
         HttpResponse<String> res = counted("/admin/stats");
-        assertTrue(res.body().contains("\"speakersWithTalks\":" + TALKS / 3 + ","), res.body());
+        assertTrue(res.body().contains("\"speakersWithTalks\":12,"), res.body());
         assertTrue(res.body().contains("\"talks\":" + TALKS + ","), res.body());
     }
 
@@ -116,6 +125,8 @@ class ListQueriesTest {
         HttpResponse<String> res = send("GET", path, null);
         int statements = STATEMENTS.get();
         assertEquals(200, res.statusCode(), res.body());
+        // At least one, so a counter that stopped counting can't pass for a fixed number of queries.
+        assertTrue(statements >= 1, "GET " + path + ": no SQL statements counted; is the counting DataSource wired?");
         assertTrue(statements <= MAX_STATEMENTS, "GET " + path + " ran " + statements + " SQL statements for "
                 + TALKS + " talks (at most " + MAX_STATEMENTS + ")");
         return res;

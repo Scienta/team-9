@@ -337,6 +337,8 @@ public class ConferenceService {
 
     // ---------------------------------------------------------------- statistics
 
+    // Several statements (talks, speaker counts), read from one snapshot so the numbers agree with each other.
+    @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
     public Map<String, Object> statistics() {
         List<TalkDto> talks = listTalks(null, null);
         Map<String, Integer> byFormat = new LinkedHashMap<>();

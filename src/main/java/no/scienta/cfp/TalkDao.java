@@ -17,11 +17,12 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 @Repository
 public class TalkDao {
 
-    // Each talk with its rating count and total, so a list is one query rather than one more per talk.
+    // Each talk with its rating count and total, so a list is one query rather than one more per talk. LATERAL, so the
+    // totals are looked up per selected talk through rating's primary key, not aggregated over every rating.
     private static final String SELECT = "SELECT t.id, t.title, t.format, t.duration, t.level, t.status, t.speaker_id, "
-            + "t.submitted_at, COALESCE(r.cnt, 0) AS rating_count, COALESCE(r.total, 0) AS rating_total FROM talk t "
-            + "LEFT JOIN (SELECT talk_id, COUNT(*) AS cnt, SUM(score) AS total FROM rating GROUP BY talk_id) r "
-            + "ON r.talk_id = t.id";
+            + "t.submitted_at, r.cnt AS rating_count, r.total AS rating_total FROM talk t "
+            + "CROSS JOIN LATERAL (SELECT COUNT(*) AS cnt, COALESCE(SUM(score), 0) AS total FROM rating "
+            + "WHERE rating.talk_id = t.id) r";
 
     private final JdbcTemplate jdbc;
 
