@@ -28,7 +28,10 @@ from (`lessons.md#L<n>`).
 10. **Effects on old rules.** Does it change a counted limit (the 3-talk limit), a filter, a
     sort, the ratings average?
 11. **Concurrency.** Two people doing conflicting things at once: what stops an illegal state?
-    (Row locks or conditional writes: advisory locks are not available.)
+    (Row locks or conditional writes: advisory locks are not available.) A lock only helps if the read
+    after it sees what the previous holder committed: production starts transactions at REPEATABLE
+    READ, and only `TransactionConfig` (a `SET TRANSACTION` inside the transaction) makes them READ
+    COMMITTED. Add the limit's rush to `PooledIsolationTest` (lessons.md L18).
 12. **Formats.** Exact string formats for any new timestamps or numbers. For **rounding**: is it done
     on the exact value (integer fraction, `BigDecimal`), never a `double` sum or mean? Test it with a
     tie that isn't exact in binary (43/40 = 1.075, not k/8), and every sort or tie rule on rounded

@@ -20,7 +20,9 @@ PR. `/retro` adds items when a review let something through: say where it came f
 - [ ] Bad input never gives a 500 (null, blank, wrong type, a fractional number for an `integer` field, unknown enum, non-numeric path id).
 - [ ] A rejected request changes nothing in the database.
 - [ ] Limits and state transitions hold under concurrent requests: row lock (`SELECT … FOR UPDATE`)
-      or conditional write, inside one transaction. No advisory locks, no session `SET`.
+      or conditional write, inside one transaction. No advisory locks, no session `SET`. Every new
+      lock-guarded limit has a rush in `PooledIsolationTest`, which runs the way production does
+      (REPEATABLE READ by default, the driver's isolation setting dropped by the pooler) (`lessons.md#L18`).
 - [ ] Every new row lock has a timeout test that would pass without the lock removed only if it's wrong:
       hold a lock mode that blocks the new lock but not the foreign-key checks of the same request
       (`FOR NO KEY UPDATE` against a new `FOR UPDATE`), and show the test failing with the lock removed (`lessons.md#L17`).

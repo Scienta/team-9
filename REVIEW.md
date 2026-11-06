@@ -104,6 +104,14 @@ doesn't exist, got 404 from us. Our D3 had used the house convention's exception
 that is "the subject of the action". The harness wants 400, as for `POST /talks` with an unknown
 `speakerId`. The exception is gone from the convention ([lessons.md](workflow/lessons.md) L13).
 
+**workshop-registration/check-4 and scheduling/check-6, FAULTY now and then (ticks 144-213).** The
+harness's rushes got through our locks: production stored 21 registrations for a 20-seat workshop,
+and put one speaker's two talks in the same slot. Locally every rush held. Production's database
+starts transactions at REPEATABLE READ, and the driver's `setTransactionIsolation` (a session `SET`)
+doesn't reach the transaction through the pooler, so after a lock wait the read saw the old
+snapshot. `TransactionConfig` now sets the level inside each transaction, and `PooledIsolationTest`
+runs the rushes the way production does ([lessons.md](workflow/lessons.md) L18).
+
 ## 5. Reusable artifacts
 
 - [`workflow/bin/work`](workflow/bin/work): a race-safe shared agent board on an orphan git branch
