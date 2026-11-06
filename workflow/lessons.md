@@ -126,3 +126,18 @@ change made so it can't recur silently (with the file changed). Number them `L1`
 - **Harness change:** `workflow/checklists/review.md` and `spec-questions.md` now name a fractional number
   for an `integer` field. `AcceptanceTest` and `examples/acceptance.hurl` cover it; the JUnit test
   failed on the old code with the harness's 403 before the fix.
+
+## L9: an accepted talk that isn't a workshop got 404, and workshop-registration/check-2 went FAULTY (tick 107)
+
+- **What happened:** right after the claim, check-2 accepted a WORKSHOP, registered, withdrew it
+  (409 on the next registration: passed), then accepted a LIGHTNING_10 talk and registered for it.
+  We answered 404 "workshop not found" (decision D2), and the harness rejected it.
+- **Root cause:** D2 applied "404 for a path id that doesn't exist" to an id that does exist but is
+  the wrong kind. The request puts both conditions in one rule ("only workshops ... that the
+  committee has accepted take registrations"), and the harness answers both the same way: 409. A
+  person confirmed D2 in review, so review didn't catch it either.
+- **Should have been caught by:** `/spec` (the decision), with a house convention that separated
+  "no such thing" from "not eligible".
+- **Harness change:** `workflow/checklists/spec-questions.md`: 404 only when nothing with that id
+  exists; an existing resource of the wrong kind is 409. Test and Hurl request for an accepted
+  presentation and lightning talk. `REVIEW.md` section 4.

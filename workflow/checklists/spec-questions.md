@@ -38,7 +38,9 @@ Our default answers, so every feature behaves the same way. A DECISION that foll
 - **400** for a malformed request: missing, null, blank, wrong type, unknown enum value (case-sensitive).
 - **Emails** need a dot in the domain on top of `@Email` (`a@b` is 400), and compare with `lower()`.
   Set by a person in review of workshop-registration D1; speaker registration predates it (lessons.md L6).
-- **404** for an id in the **path** that doesn't exist.
+- **404** for an id in the **path** that doesn't exist. Only then: if a resource with that id
+  exists but is the wrong kind for the action (a talk that isn't a workshop), that's **409**, the
+  same as the wrong state (lessons.md L9).
 - **400** for an id in the **body** that doesn't exist (as `POST /talks` does with `speakerId`),
   unless the request makes it the subject of the action. Write down which applies.
 - **409** for a well-formed request the current state forbids: a limit reached, an illegal state
