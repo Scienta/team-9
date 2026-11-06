@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Maven build cache (https://maven.apache.org/extensions/maven-build-cache-extension/).
+  The key is a hash of the effective pom, src/ and the plugins' configuration. On a hit, `./mvnw package`
+  restores target/ (classes, cfp.jar, surefire reports) instead of compiling and running the tests again.
+  The cache lives in ~/.m2/build-cache, so every worktree shares it: a branch whose tree another worktree
+  already built and tested is a hit.
+
+  Force a full rebuild:   ./mvnw package -Dmaven.build.cache.skipCache=true
+  Turn the cache off:     ./mvnw package -Dmaven.build.cache.enabled=false
+-->
+<cache xmlns="http://maven.apache.org/BUILD-CACHE-CONFIG/1.2.0"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="http://maven.apache.org/BUILD-CACHE-CONFIG/1.2.0 https://maven.apache.org/xsd/build-cache-config-1.2.0.xsd">
+    <configuration>
+        <enabled>true</enabled>
+        <hashAlgorithm>XX</hashAlgorithm>
+        <local>
+            <maxBuildsCached>10</maxBuildsCached>
+        </local>
+    </configuration>
+    <input>
+        <global>
+            <glob>{*.java,*.properties,*.xml,*.sql,*.json,*.yml,*.yaml,*.txt}</glob>
+            <includes>
+                <include>src/</include>
+            </includes>
+        </global>
+    </input>
+    <executionControl>
+        <reconcile>
+            <plugins>
+                <!-- A cached build only stands in for this one if it ran (at least) the same tests. A build that
+                     skipped tests or ran a subset (-Dtest=...) is never reused for one that must run them all. -->
+                <plugin artifactId="maven-surefire-plugin" goal="test">
+                    <reconciles>
+                        <reconcile propertyName="skip" skipValue="true"/>
+                        <reconcile propertyName="skipExec" skipValue="true"/>
+                        <reconcile propertyName="skipTests" skipValue="true"/>
+                        <reconcile propertyName="testFailureIgnore" skipValue="true"/>
+                        <reconcile propertyName="test"/>
+                        <reconcile propertyName="groups"/>
+                        <reconcile propertyName="excludedGroups"/>
+                    </reconciles>
+                </plugin>
+            </plugins>
+        </reconcile>
+    </executionControl>
+</cache>
