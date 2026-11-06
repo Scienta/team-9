@@ -155,6 +155,13 @@ class WorkshopRegistrationTest {
         assertEquals(20, list(workshop, 200).size());
     }
 
+    // D1: an ordinary address with a dotted domain, including subdomains, is accepted
+    @Test
+    void dottedDomainsAreAccepted() throws Exception {
+        long workshop = acceptedWorkshop();
+        register(workshop, "Sub", "sub-" + UUID.randomUUID() + "@mail.example.co.uk", 201);
+    }
+
     // R5
     @Test
     void samePersonCanRegisterForSeveralWorkshops() throws Exception {
@@ -199,6 +206,9 @@ class WorkshopRegistrationTest {
                 "{\"name\":\"X\",\"email\":\"\"}",
                 "{\"name\":\"X\",\"email\":\"not-an-email\"}",
                 "{\"name\":\"X\",\"email\":\" x@example.com\"}",
+                // D1 (overridden in review): the domain needs a dot, so a@b is not an email
+                "{\"name\":\"X\",\"email\":\"a@b\"}",
+                "{\"name\":\"X\",\"email\":\"a@localhost\"}",
                 // Wrong JSON types: Jackson would turn 123 or true into "123"/"true" (review finding E2)
                 "{\"name\":123,\"email\":\"x@example.com\"}",
                 "{\"name\":true,\"email\":\"x@example.com\"}",

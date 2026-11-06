@@ -66,6 +66,11 @@ POST {{base_url}}/workshops/{{workshop_id}}/registrations
 { "name": "Bad Email", "email": "not-an-email" }
 HTTP 400
 
+# D1: the email's domain needs a dot
+POST {{base_url}}/workshops/{{workshop_id}}/registrations
+{ "name": "No Dot", "email": "a@b" }
+HTTP 400
+
 POST {{base_url}}/workshops/{{workshop_id}}/registrations
 { "name": null, "email": "null-name-{{newUuid}}@example.com" }
 HTTP 400

@@ -80,3 +80,15 @@ change made so it can't recur silently (with the file changed). Number them `L1`
   the team spec's API table has no Hurl request (shown failing on a Hurl file without its 404s), run
   by `/build` step 3 and by CI's `decisions` job; `workflow/checklists/review.md` points at it.
   Concurrency tests that guard a lock now run several rounds (`rushNeverExceedsTwentySeats`).
+
+## L6: a person overrode the email decision in workshop-registration review (tick 90)
+
+- **What happened:** D1 answered "validate emails exactly as speaker registration does". In review
+  Espen overrode it: an attendee email needs a dot in its domain, so `a@b` is 400. The other ten
+  decisions were confirmed as written.
+- **Root cause:** `/spec` copied the nearest existing behaviour without asking whether that
+  behaviour was what we wanted; `@Email` alone accepts `a@b`.
+- **Should have been caught by:** `/spec` (the decision).
+- **Harness change:** a house convention for emails in `workflow/checklists/spec-questions.md`, so
+  the next feature with an email defaults to the stricter rule.
+

@@ -26,7 +26,7 @@ Status: in-review
 | Method and path | Status | When |
 |---|---|---|
 | `POST /workshops/{id}/registrations` | 201 | registered; body is the `Registration` |
-| | 400 | body missing or not JSON; `name` missing, null, blank, not a JSON string (D9) or containing a NUL character; `email` missing, null, blank, not a JSON string (D9) or not an email (D1); non-numeric `{id}`. Checked before the workshop is looked up (D10). |
+| | 400 | body missing or not JSON; `name` missing, null, blank, not a JSON string (D9) or containing a NUL character; `email` missing, null, blank, not a JSON string (D9), not an email or without a dot in its domain (D1); non-numeric `{id}`. Checked before the workshop is looked up (D10). |
 | | 404 | no talk with that id, or the talk isn't a `WORKSHOP` (D2) |
 | | 409 | the workshop isn't `ACCEPTED` (D3); 20 registrations already (D4); this email (any case) is already registered for it (D5) |
 | | 503 | the workshop row stayed locked for 2 s (`Retry-After: 1`, as co-speakers). Test: `#lockedWorkshopAnswers503AndChangesNothing` |
@@ -41,30 +41,31 @@ No existing response changes: `Talk` gets no new field.
 
 ## Decisions
 
-- **D1** What's a valid email? → The same check as speaker registration (`@NotBlank @Email`), so
-  both features accept and reject the same strings; invalid is 400 (house convention). `UNCONFIRMED`
+- **D1** What's a valid email? → Speaker registration's check (`@NotBlank @Email`) **plus a dot in
+  the domain**, so `a@b` and `a@localhost` are 400 (`mail.example.co.uk` is fine). Overridden in
+  review: the first answer was "exactly as speakers", which accepts `a@b`. `CONFIRMED by Espen Myklevoll`
 - **D2** A talk that exists but isn't a `WORKSHOP` → 404 on both endpoints: the path names a
   workshop, and there is no workshop with that id (house convention: 404 for a path id that
-  doesn't exist). `UNCONFIRMED`
+  doesn't exist). `CONFIRMED by Espen Myklevoll`
 - **D3** A workshop that isn't `ACCEPTED` (`SUBMITTED`, `WAITLISTED`, `REJECTED`, `WITHDRAWN`) →
-  409: the request is well-formed and the state forbids it (house convention). `UNCONFIRMED`
-- **D4** The 21st registration → 409, nothing stored (house convention: a limit reached). `UNCONFIRMED`
+  409: the request is well-formed and the state forbids it (house convention). `CONFIRMED by Espen Myklevoll`
+- **D4** The 21st registration → 409, nothing stored (house convention: a limit reached). `CONFIRMED by Espen Myklevoll`
 - **D5** Registering an email again for the same workshop, in any letter case → 409, nothing
   stored. The request says "one registration per email", not that a repeat "changes nothing", so
   it's a duplicate, not a no-op (house convention; lessons.md L3 on not assuming no-ops). The
-  check runs before the capacity check, so a duplicate on a full workshop is still 409. `UNCONFIRMED`
+  check runs before the capacity check, so a duplicate on a full workshop is still 409. `CONFIRMED by Espen Myklevoll`
 - **D6** Listing a workshop that isn't accepted → 200 with its registrations (`[]` if none), so
-  a withdrawn workshop's list stays readable (R3). `UNCONFIRMED`
+  a withdrawn workshop's list stays readable (R3). `CONFIRMED by Espen Myklevoll`
 - **D7** Emails are compared with `lower(email)`, as speakers are (`ux_speaker_email`); no other
-  normalisation (whitespace is already rejected by `@Email`). Stored and returned as typed. `UNCONFIRMED`
+  normalisation (whitespace is already rejected by `@Email`). Stored and returned as typed. `CONFIRMED by Espen Myklevoll`
 - **D8** Registration ids come from one sequence across all workshops; the list is ordered by it,
-  which is registration order. `UNCONFIRMED`
+  which is registration order. `CONFIRMED by Espen Myklevoll`
 - **D9** `name` or `email` given as a number, boolean, array or object → 400 (house convention:
   wrong type). Jackson would otherwise turn `123` into `"123"` and store it. Stricter than speaker
-  registration, which still coerces. `UNCONFIRMED`
+  registration, which still coerces. `CONFIRMED by Espen Myklevoll`
 - **D10** A bad body on an unknown or non-workshop id → 400, not 404: the body is validated before
-  the workshop is looked up, as Spring does for every endpoint. `UNCONFIRMED`
-- **D11** Who may register → anyone; the request has no owner or caller identity. `UNCONFIRMED`
+  the workshop is looked up, as Spring does for every endpoint. `CONFIRMED by Espen Myklevoll`
+- **D11** Who may register → anyone; the request has no owner or caller identity. `CONFIRMED by Espen Myklevoll`
 
 ## Concurrency and data
 

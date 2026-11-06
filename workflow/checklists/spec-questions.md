@@ -36,6 +36,8 @@ from (`lessons.md#L<n>`).
 Our default answers, so every feature behaves the same way. A DECISION that follows one says so.
 
 - **400** for a malformed request: missing, null, blank, wrong type, unknown enum value (case-sensitive).
+- **Emails** need a dot in the domain on top of `@Email` (`a@b` is 400), and compare with `lower()`.
+  Set by a person in review of workshop-registration D1; speaker registration predates it (lessons.md L6).
 - **404** for an id in the **path** that doesn't exist.
 - **400** for an id in the **body** that doesn't exist (as `POST /talks` does with `speakerId`),
   unless the request makes it the subject of the action. Write down which applies.
