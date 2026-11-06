@@ -22,7 +22,7 @@ set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$root"
-h="$root/workflow/bin/harness"
+h="${NEXT_HARNESS:-$root/workflow/bin/harness}"  # NEXT_HARNESS: a stand-in, for testing
 team="$(tr -d '[:space:]' <.fagdag/team)"
 
 feedback="$("$h" "/api/teams/$team/feedback")"
@@ -93,7 +93,12 @@ done < <(jq -r '.features[] | [.slug, .claimed, ([.checks[]? | select(.status !=
 echo
 echo "Tick $tick. Score: $(jq -r '.score | "\(.total) (earned \(.earned), bled \(.bled))"' <<<"$feedback")$(jq -r 'if .down.current then ", SERVICE DOWN: \(.down.reason)" else "" end' <<<"$feedback")"
 if [ -n "$changed" ]; then echo "Specs changed since last fetch:$changed  (check what we built against them)"; fi
-if [ -n "$suggest_faulty" ]; then
+# The harness's notes on a check (hints about what it saw), which nothing else surfaces.
+notes="$(jq -r '.features[] | .slug as $s | .checks[]? | select((.notes // []) | length > 0) | "  \($s)/\(.name): \(.notes | map(tostring) | join("; "))"' <<<"$feedback")"
+if [ -n "$notes" ]; then printf 'Harness notes:\n%s\n' "$notes"; fi
+if [ "$(jq -r '.down.current' <<<"$feedback")" = true ]; then
+  echo "Suggested: the SERVICE IS DOWN ($(jq -r '"\(.down.reason), \(.down.streak) tick(s)"' <<<"$feedback")): every claimed feature bleeds. Check /health, the deploy run and .github/fagdag/logs.sh before anything else."
+elif [ -n "$suggest_faulty" ]; then
   echo "Suggested: /retro $suggest_faulty  (a claimed feature is failing checks and costing points)"
 elif [ -n "$suggest_merged" ]; then
   echo "Suggested: /verify $suggest_merged  (merged, so evidence then a claim is the shortest path to points)"

@@ -91,5 +91,6 @@ step in a skill. The change rides in the same PR as the fix, so a person reviews
 - [`checklists/spec-questions.md`](checklists/spec-questions.md): gaps to look for in every request, and our conventions for answering them.
 - [`checklists/review.md`](checklists/review.md): what the reviewers (agents and people) check.
 - [`lessons.md`](lessons.md): the learning log.
-- [`bin/`](bin/): `harness` (API client), `next`, `work` (shared board), `verify`, `check-decisions`, `hurl` (Docker fallback).
+- [`bin/`](bin/): `harness` (API client), `next`, `work` (shared board), `verify`, `check-decisions`, `hurl` (Docker fallback),
+  `diff-upgrade` (sends one request corpus to an old and a new build and lists every difference: for upgrades).
 - [`watch_specs.py`](watch_specs.py), [`automation.md`](automation.md): the release watcher; `test_*.py`: tests for it and `bin/work`.

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE beans PUBLIC "-//SPRING//DTD BEAN 2.0//EN" "https://www.springframework.org/dtd/spring-beans-2.0.dtd">
+<!--
+  Keeps Spring 5.3's SQL exception translation for Postgres (e.g. 55P03 lock_not_available ->
+  CannotAcquireLockException, 23505 -> DuplicateKeyException). Since Spring 6 JdbcTemplate only translates by
+  vendor error code when this file is on the classpath root; otherwise 55P03 becomes UncategorizedSQLException.
+  Copied from spring-jdbc 7.0.10's org/springframework/jdbc/support/sql-error-codes.xml (PostgreSQL entry only).
+  See workflow/specs/spring-boot-4.md.
+-->
+<beans>
+
+	<bean id="PostgreSQL" name="Postgres" class="org.springframework.jdbc.support.SQLErrorCodes">
+		<property name="useSqlStateForTranslation">
+			<value>true</value>
+		</property>
+		<property name="badSqlGrammarCodes">
+			<value>03000,42000,42601,42602,42622,42804,42P01</value>
+		</property>
+		<property name="duplicateKeyCodes">
+			<value>21000,23505</value>
+		</property>
+		<property name="dataIntegrityViolationCodes">
+			<value>23000,23502,23503,23514</value>
+		</property>
+		<property name="dataAccessResourceFailureCodes">
+			<value>53000,53100,53200,53300</value>
+		</property>
+		<property name="cannotAcquireLockCodes">
+			<value>55P03</value>
+		</property>
+		<property name="cannotSerializeTransactionCodes">
+			<value>40001</value>
+		</property>
+		<property name="deadlockLoserCodes">
+			<value>40P01</value>
+		</property>
+	</bean>
+
+</beans>

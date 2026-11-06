@@ -272,9 +272,22 @@ HTTP 201
 [Captures]
 presentation_id: jsonpath "$.id"
 
+# D2: an accepted talk that isn't a workshop takes no registrations: 409 (harness check-2, lessons.md L9)
+PUT {{base_url}}/talks/{{presentation_id}}/ratings/1
+{ "score": 3 }
+HTTP 200
+
+PUT {{base_url}}/talks/{{presentation_id}}/ratings/2
+{ "score": 4 }
+HTTP 200
+
+PUT {{base_url}}/talks/{{presentation_id}}/status
+{ "status": "ACCEPTED" }
+HTTP 200
+
 POST {{base_url}}/workshops/{{presentation_id}}/registrations
 { "name": "Lost", "email": "lost-{{newUuid}}@example.com" }
-HTTP 404
+HTTP 409
 
 GET {{base_url}}/workshops/{{presentation_id}}/registrations
 HTTP 404

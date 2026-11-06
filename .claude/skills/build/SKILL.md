@@ -23,7 +23,7 @@ At the end of every numbered step below, record what happened with
 - In the Hurl file, **one request per case listed in a decision**, not per status: a decision
   naming five kinds of bad `talkId` gets five requests (`bin/verify` runs only the Hurl file). And a
   request that tests one rule must not break any other rule too, or it passes with that rule's
-  check removed (lessons.md L7).
+  check removed (lessons.md L10).
 - Run them and see them fail for the right reason (missing endpoint or wrong value, not a compile
   error elsewhere).
 
@@ -33,10 +33,14 @@ Keep it in the feature's own files where possible (controller, DAO). Schema chan
 `src/main/resources/schema.sql`, additive and idempotent. Use row locks or conditional writes for
 anything that can race.
 
+While writing it, run only your own test class (`./mvnw -q test -Dtest=<YourTest>`); the full run is
+for the gate below (`.claude/rules/build.md`).
+
 ## 3. Local gates
 
 All must pass, and you must have seen them pass:
-- `./mvnw -q package` (all tests, not just yours).
+- `./mvnw -q package` (all tests, not just yours). A build-cache hit (about 2 s, no tests run;
+  without `-q` it prints `Found cached build`) counts: the same inputs passed before. Never pass `-Dtest=` or `-DskipTests` here.
 - App running locally (`docker compose up -d`, `java -jar target/cfp.jar &`), then
   `HURL=workflow/bin/hurl examples/run.sh` (every Hurl file, not just yours). Stop the app after.
 - `workflow/bin/check-hurl-statuses <slug>`: every status in the team spec's API table has a Hurl

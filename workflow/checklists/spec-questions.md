@@ -7,7 +7,7 @@ from (`lessons.md#L<n>`).
 ## Gaps to look for
 
 1. **Unknown ids.** Each id in the path or body that doesn't exist: which status? (talk, speaker, ...)
-2. **Malformed input.** Missing body, missing field, `null`, wrong type, empty or blank string,
+2. **Malformed input.** Missing body, missing field, `null`, wrong type (a fractional number such as `1.5` for an `integer` field, lessons.md L8), empty or blank string,
    wrong case for an enum, extra fields, non-numeric path id. Two that pass Spring's defaults
    silently (lessons.md L5): a **number or boolean where a string is expected** (Jackson turns `123`
    into `"123"`: use `StrictStringDeserializer` on the field) and a **NUL character** in a string
@@ -33,7 +33,7 @@ from (`lessons.md#L<n>`).
 13. **Order of checks vs. no-ops.** If a decision makes a repeat a no-op (200, nothing changes),
     say where it sits in the check order, and check every later state change against it: can the
     resource change after the first call (withdrawn, new members) so a later check rejects the
-    repeat? Write the answer into both decisions (lessons.md L7).
+    repeat? Write the answer into both decisions (lessons.md L10).
 
 ## House conventions
 
@@ -42,7 +42,9 @@ Our default answers, so every feature behaves the same way. A DECISION that foll
 - **400** for a malformed request: missing, null, blank, wrong type, unknown enum value (case-sensitive).
 - **Emails** need a dot in the domain on top of `@Email` (`a@b` is 400), and compare with `lower()`.
   Set by a person in review of workshop-registration D1; speaker registration predates it (lessons.md L6).
-- **404** for an id in the **path** that doesn't exist.
+- **404** for an id in the **path** that doesn't exist. Only then: if a resource with that id
+  exists but is the wrong kind for the action (a talk that isn't a workshop), that's **409**, the
+  same as the wrong state (lessons.md L9).
 - **400** for an id in the **body** that doesn't exist (as `POST /talks` does with `speakerId`),
   unless the request makes it the subject of the action. Write down which applies.
 - **409** for a well-formed request the current state forbids: a limit reached, an illegal state

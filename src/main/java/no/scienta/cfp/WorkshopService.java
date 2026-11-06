@@ -36,7 +36,12 @@ public class WorkshopService {
             if (!talkDao.lock(workshopId)) {
                 throw notFound();
             }
-            TalkDto talk = workshop(workshopId);
+            TalkDto talk = talkDao.findById(workshopId);
+            if (!"WORKSHOP".equals(talk.format)) {
+                // The talk exists (it's locked), but only workshops take registrations: 409 like an unaccepted
+                // workshop, not 404 (harness workshop-registration/check-2, lessons.md L9).
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "a " + talk.format + " talk takes no registrations");
+            }
             if (!"ACCEPTED".equals(talk.status)) {
                 throw new ResponseStatusException(HttpStatus.CONFLICT, "a " + talk.status + " workshop takes no registrations");
             }

@@ -84,6 +84,13 @@ evidence was checked. The fix answers 404, `examples/co-speakers.hurl` replays t
 sequence, and the spec checklist now asks about a repeated remove on its own
 ([lessons.md](workflow/lessons.md) L3).
 
+**workshop-registration/check-2, FAULTY from tick 107 (right after the claim).** The harness
+registered for an accepted lightning talk; we answered 404 because our decision D2 treated "not a
+workshop" as "no such workshop". The harness wants 409, the same as a workshop that isn't accepted:
+both conditions are one rule in the request. Three reviewer agents and a person's review had passed
+D2. The house convention now separates "nothing with that id" (404) from "exists but not eligible"
+(409) ([lessons.md](workflow/lessons.md) L9).
+
 ## 5. Reusable artifacts
 
 - [`workflow/bin/work`](workflow/bin/work): a race-safe shared agent board on an orphan git branch

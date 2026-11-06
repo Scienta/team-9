@@ -15,6 +15,9 @@ most valuable thing, does it fully, reports, and ends. The person's only jobs ar
    do it, and stop. Record every step on the board as it happens (`.claude/rules/work-branch.md`);
    run with `WORK_AGENT=drive`:
 
+   0. **`bin/next` says the SERVICE IS DOWN** (every claimed feature is bleeding): find why from
+      `/health`, `gh run list --branch main --limit 3` and `.github/fagdag/logs.sh --tail 200`, then
+      notify a person at once with what you found. A fix goes on a branch with an `URGENT` PR, as below.
    1. **A claimed feature is FAULTY** (it's costing points): `/retro <slug>` with the check's
       transcript. The fix PR's title starts with `URGENT`.
    2. **SPEC CHANGED** for a feature we built or are building: update the team spec and tests on a

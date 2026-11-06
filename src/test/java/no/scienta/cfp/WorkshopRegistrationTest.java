@@ -20,8 +20,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 /** Workshop registration (workflow/specs/workshop-registration.md): rules R1-R6 and decisions D1-D8. */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -77,9 +77,13 @@ class WorkshopRegistrationTest {
         register(rejected, "A", unique("a"), 409);
         assertEquals(0, list(rejected, 200).size());
 
+        // An accepted talk that isn't a workshop: the talk exists, but only workshops take registrations,
+        // so 409 like a workshop that isn't accepted (harness workshop-registration/check-2; lessons.md L9).
         long presentation = accept(talk(speaker(), "PRESENTATION"));
-        register(presentation, "A", unique("a"), 404);
+        register(presentation, "A", unique("a"), 409);
         list(presentation, 404);
+        long lightning = accept(talk(speaker(), "LIGHTNING_10"));
+        register(lightning, "A", unique("a"), 409);
 
         register(999_999_999L, "A", unique("a"), 404);
         list(999_999_999L, 404);

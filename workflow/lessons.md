@@ -92,8 +92,57 @@ change made so it can't recur silently (with the file changed). Number them `L1`
 - **Harness change:** a house convention for emails in `workflow/checklists/spec-questions.md`, so
   the next feature with an email defaults to the stricter rule.
 
+## L7: the upgrade's differential corpus only exercised our code, not the server and validator under it (spring-boot-4, review)
 
-## L7: reviewers caught a no-op rejected by an earlier check, and thin Hurl coverage, in scheduling (tick ~105)
+- **What happened:** `workflow/bin/diff-upgrade` (163 requests, 2.7 vs 4.1.2) showed no status
+  difference, but review-edge found three: `GET /talks?sort=%zz` and >1000 query parameters went
+  200 → 400 with an ERROR stack trace (Tomcat 11 throws where Tomcat 9 dropped the parameter, and its
+  limit fell from 10000 to 1000), and a name of only Unicode whitespace went 201 → 400 (Hibernate
+  Validator 9). review-regress found that `bin/verify`'s log check matched only Boot 2.7's
+  `yyyy-MM-dd HH:mm:ss` timestamps, so on Boot 4 an ERROR line without a stack trace reported OK
+  (the L2 failure mode again), and that the branch was 4 commits behind main, whose new
+  `UpgradeContractTest` had never run against Boot 4.
+- **Root cause:** the corpus was written from our controllers' point of view (fields, ids, enums);
+  an upgrade also replaces the layers *before* the controller (servlet container parameter parsing,
+  URL decoding, bean validation) and the tooling that reads its output (log format). None of the
+  corpus requests reached those.
+- **Should have been caught by:** `/build` (the corpus and the local gates).
+- **Harness change:** `workflow/bin/diff-upgrade` now has malformed %-escapes, 1001 parameters, an
+  invalid-UTF-8 path, a form body and Unicode-whitespace names; `workflow/bin/verify` matches both
+  log formats (`ERROR_LINE`, shown to match Boot 2.7 and Boot 4 ERROR lines and not WARN/INFO);
+  `workflow/checklists/review.md` adds an item for server-level input and log format on upgrades;
+  `.claude/agents/review-*.md` now say Spring Boot 4 / Java 25.
+
+## L8: withdraw took `speakerId: 1.5` as speaker 1, and acceptance/check-4 failed now and then (ticks 68-81)
+
+- **What happened:** acceptance/check-4 was FAULTY on and off from tick 68. Its transcript at tick 81:
+  `POST /talks/{id}/withdraw` with `{"speakerId":1.5}` answered 403 "only the speaker can withdraw a
+  talk"; the harness expected a 400. It only fails when the check's random body is fractional.
+- **Root cause:** `ConferenceService.withdraw` accepted any `Number` and called `.longValue()`, so 1.5
+  became speaker 1. The spec types `speakerId` as `integer`. Our JUnit and Hurl files tried only a
+  missing id and another valid speaker.
+- **Should have been caught by:** `/build` (tests for "wrong type" stopped at strings and absent fields)
+  and `review-edge`.
+- **Harness change:** `workflow/checklists/review.md` and `spec-questions.md` now name a fractional number
+  for an `integer` field. `AcceptanceTest` and `examples/acceptance.hurl` cover it; the JUnit test
+  failed on the old code with the harness's 403 before the fix.
+
+## L9: an accepted talk that isn't a workshop got 404, and workshop-registration/check-2 went FAULTY (tick 107)
+
+- **What happened:** right after the claim, check-2 accepted a WORKSHOP, registered, withdrew it
+  (409 on the next registration: passed), then accepted a LIGHTNING_10 talk and registered for it.
+  We answered 404 "workshop not found" (decision D2), and the harness rejected it.
+- **Root cause:** D2 applied "404 for a path id that doesn't exist" to an id that does exist but is
+  the wrong kind. The request puts both conditions in one rule ("only workshops ... that the
+  committee has accepted take registrations"), and the harness answers both the same way: 409. A
+  person confirmed D2 in review, so review didn't catch it either.
+- **Should have been caught by:** `/spec` (the decision), with a house convention that separated
+  "no such thing" from "not eligible".
+- **Harness change:** `workflow/checklists/spec-questions.md`: 404 only when nothing with that id
+  exists; an existing resource of the wrong kind is 409. Test and Hurl request for an accepted
+  presentation and lightning talk. `REVIEW.md` section 4.
+
+## L10: reviewers caught a no-op rejected by an earlier check, and thin Hurl coverage, in scheduling (tick ~105)
 
 - **What happened:** the first build of scheduling passed every local gate. All three reviewers
   then found that a talk put on the programme, withdrawn, and put in the same place again answered
