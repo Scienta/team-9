@@ -28,3 +28,5 @@ PR. `/retro` adds items when a review let something through: say where it came f
 - [ ] Schema changes are additive and work on the existing production data (it survives deploys).
 - [ ] `/health`, port 8080, the `Dockerfile` and `GIT_SHA` are untouched or still per the contract.
 - [ ] No secrets, tokens or `.fagdag/harness-token` contents in the diff.
+- [ ] The PR's commits (`git log origin/main..HEAD`), not just its diff, are all this change: no
+      commits carried in from someone's local `main` or another branch (`lessons.md#L4`).

@@ -48,5 +48,7 @@ most valuable thing, does it fully, reports, and ends. The person's only jobs ar
 - One feature at a time per loop. Before starting one, `workflow/bin/work start <slug>` must succeed
   (it's the lock) and `origin/feat/<slug>` must not exist.
 - Never push to `main`, merge, or claim. Never print the harness token.
+- If `bin/next` prints `STOP: local main has … commit(s)` (`workflow/bin/check-main`), stop the
+  loop and tell the person: unreviewed work is one push away from deploying (lessons.md L4).
 - If the same step fails twice in a row, `workflow/bin/work state <slug> blocked "<what's stuck>"`,
   stop the loop and tell the person, rather than retrying forever.
