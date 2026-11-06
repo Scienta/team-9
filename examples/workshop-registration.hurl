@@ -289,8 +289,11 @@ POST {{base_url}}/workshops/{{presentation_id}}/registrations
 { "name": "Lost", "email": "lost-{{newUuid}}@example.com" }
 HTTP 409
 
+# D2: listing a talk that isn't a workshop: it exists and has no registrations (harness check-2, lessons.md L9)
 GET {{base_url}}/workshops/{{presentation_id}}/registrations
-HTTP 404
+HTTP 200
+[Asserts]
+jsonpath "$" count == 0
 
 POST {{base_url}}/workshops/999999999/registrations
 { "name": "Lost", "email": "lost-{{newUuid}}@example.com" }

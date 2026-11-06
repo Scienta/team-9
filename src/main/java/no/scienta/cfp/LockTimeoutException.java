@@ -15,7 +15,11 @@ public class LockTimeoutException extends ResponseStatusException {
     static final String LOCK_NOT_AVAILABLE = "55P03";
 
     public LockTimeoutException(Throwable cause) {
-        super(HttpStatus.SERVICE_UNAVAILABLE, "talk is busy, retry shortly", cause);
+        this("talk is busy, retry shortly", cause);
+    }
+
+    public LockTimeoutException(String message, Throwable cause) {
+        super(HttpStatus.SERVICE_UNAVAILABLE, message, cause);
     }
 
     @Override

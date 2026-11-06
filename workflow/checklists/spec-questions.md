@@ -30,17 +30,26 @@ from (`lessons.md#L<n>`).
 11. **Concurrency.** Two people doing conflicting things at once: what stops an illegal state?
     (Row locks or conditional writes: advisory locks are not available.)
 12. **Formats.** Exact string formats for any new timestamps or numbers.
+13. **Order of checks vs. no-ops.** If a decision makes a repeat a no-op (200, nothing changes),
+    say where it sits in the check order, and check every later state change against it: can the
+    resource change after the first call (withdrawn, new members) so a later check rejects the
+    repeat? Write the answer into both decisions (lessons.md L10).
 
 ## House conventions
 
 Our default answers, so every feature behaves the same way. A DECISION that follows one says so.
 
-- **400** for a malformed request: missing, null, blank, wrong type, unknown enum value (case-sensitive).
+- **400** for a malformed request: missing, null, blank, wrong type, unknown enum value (case-sensitive)
+  **in the body or query**.
+- **404** for an enum value **in the path** that isn't one of the values (`/programme/R4/S1`): the
+  path names something that doesn't exist, the same as an unknown id. The harness checks this:
+  400 failed scheduling/check-1 (lessons.md L12).
 - **Emails** need a dot in the domain on top of `@Email` (`a@b` is 400), and compare with `lower()`.
   Set by a person in review of workshop-registration D1; speaker registration predates it (lessons.md L6).
 - **404** for an id in the **path** that doesn't exist. Only then: if a resource with that id
   exists but is the wrong kind for the action (a talk that isn't a workshop), that's **409**, the
-  same as the wrong state (lessons.md L9).
+  same as the wrong state; and a **read** of it is **200** with what's there (an empty list), not
+  404. Answer the read and the write separately (lessons.md L9).
 - **400** for an id in the **body** that doesn't exist (as `POST /talks` does with `speakerId`),
   unless the request makes it the subject of the action. Write down which applies.
 - **409** for a well-formed request the current state forbids: a limit reached, an illegal state

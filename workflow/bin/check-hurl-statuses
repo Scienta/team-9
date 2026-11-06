@@ -30,4 +30,6 @@ if [ -n "$missing" ]; then
   echo "$hurl has no request answering:$missing (statuses from the API table in $spec)"
   exit 1
 fi
-echo "$hurl covers every status in the API table ($(tr '\n' ' ' <<<"$in_spec"| sed 's/ $//'))."
+checked="$(grep -vxE '503|405|415' <<<"$in_spec" | tr '\n' ' ' | sed 's/ $//')"
+exempt="$(grep -xE '503|405|415' <<<"$in_spec" | tr '\n' ' ' | sed 's/ $//' || true)"
+echo "$hurl covers every status in the API table ($checked)${exempt:+; exempt, not checked: $exempt}."

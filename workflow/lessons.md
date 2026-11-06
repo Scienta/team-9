@@ -141,3 +141,58 @@ change made so it can't recur silently (with the file changed). Number them `L1`
 - **Harness change:** `workflow/checklists/spec-questions.md`: 404 only when nothing with that id
   exists; an existing resource of the wrong kind is 409. Test and Hurl request for an accepted
   presentation and lightning talk. `REVIEW.md` section 4.
+- **Then (tick 125):** with the POST fixed, the same check went one step further and listed the
+  presentation's registrations: our GET still answered 404, and was rejected too. The first fix
+  applied the new rule to the write only, though the PR had flagged the GET as untested. It's now
+  200 `[]`. **Harness change:** the convention now says a read of an existing resource of the
+  wrong kind is 200 with what's there, and to answer the read and the write separately. When a
+  FAULTY fix flags a sibling case as "untested", fix the sibling the same way in the same PR.
+
+## L10: reviewers caught a no-op rejected by an earlier check, and thin Hurl coverage, in scheduling (tick ~105)
+
+- **What happened:** the first build of scheduling passed every local gate. All three reviewers
+  then found that a talk put on the programme, withdrawn, and put in the same place again answered
+  409, although D6 said a repeat is a 200 no-op and R8 says later changes leave the programme
+  alone: D9's check order ran the `ACCEPTED` check before the repeat. review-spec also found the
+  Hurl file covered 4 of D2's 9 kinds of bad `talkId` (all were in JUnit), and that its R5 request
+  also broke R7, so it would pass with the R5 check removed.
+- **Root cause:** the spec wrote the no-op (D6) and the check order (D9) as separate decisions and
+  never asked whether a resource can change between the first call and the repeat. The Hurl file
+  was written per status, which `check-hurl-statuses` accepts, not per case; L5 named this in the
+  review checklist, which is too late to write the requests.
+- **Should have been caught by:** `/spec` (the order) and `/build` step 1 (the Hurl file).
+- **Harness change:** `workflow/checklists/spec-questions.md` item 13 (order of checks vs. no-ops);
+  `.claude/skills/build/SKILL.md` step 1: one Hurl request per case a decision lists, and a rule's
+  request must not break another rule too. `workflow/bin/check-hurl-statuses` now says which
+  statuses it exempts instead of listing them as covered. Fixed with a test-first regression in
+  `SchedulingTest#laterChangesLeaveTheProgramme` (failed with 409 before the fix) and Hurl "D6".
+
+## L11: every list of talks ran two queries per talk; GET /talks took 18-34 s in production (tick ~115)
+
+- **What happened:** after the Boot 4 deploy, `GET /talks` took 18-34 s and `/admin/stats` 23-40 s
+  (often over the 30 s client timeout) on ~3600 talks, while single reads took 0.15 s. Not Boot 4: the
+  2.7 and 4.x builds were equally slow on the same data locally. `ConferenceService.addRatings` read
+  each talk's co-speakers and rating stats with their own queries (≈7200 per list), `/admin/stats`
+  looked each talk's speaker up again, and the CSV did too; each query is a network round trip to the
+  Scaleway database, and the harness adds talks every tick.
+- **Root cause:** nothing measured how the number of queries grows with the data. Every test ran on a
+  handful of rows, where N+1 is invisible, and the base code's N+1 was inherited unnoticed.
+- **Should have been caught by:** `/build` (review-edge and review-regress for any list endpoint).
+- **Harness change:** `ListQueriesTest` counts the SQL statements a request runs on the app's own
+  DataSource (fails on the old code at 61-91 statements for 30 talks; passes at ≤ 5), and is the
+  pattern for new list endpoints. `workflow/checklists/review.md` asks for it.
+
+## L12: an unknown room in the path answered 400, and scheduling/check-1 was FAULTY from the claim (tick 140)
+
+- **What happened:** scheduling was claimed at tick 140 and check-1 was FAULTY at once. Its
+  transcript: an accepted talk, then `PUT /programme/R4/S1` (a room that doesn't exist); we
+  answered 400 "room must be one of [R1, R2, R3]", and the harness rejected it.
+- **Root cause:** D1 treated a room or slot in the **path** as "an unknown enum value", and the
+  house convention made every unknown enum value 400. That convention was written for request
+  bodies; it never said where the value sits. The request does define rooms and slots as enums, so
+  the reading looked sound to the spec, three reviewers and the person who confirmed it.
+- **Should have been caught by:** `/spec` (the decision), with a convention that tells path from body.
+- **Harness change:** `workflow/checklists/spec-questions.md` house conventions: an enum value in
+  the path that isn't one of the values is 404 (the path names nothing), in the body or query it
+  stays 400. Fix: 404 on PUT, GET and DELETE; `SchedulingTest#badInputIsRejectedAndChangesNothing`
+  and `examples/scheduling.hurl` "D1" replay `PUT /programme/R4/S1`. `REVIEW.md` section 4.
