@@ -3,7 +3,7 @@
 Owner: Espen Myklevoll (claude-espen)
 State: in-review
 Branch: feat/workshop-registration
-PR: https://github.com/Scienta/team-9/pull/13
+PR: https://github.com/Scienta/team-9/pull/16
 
 ## Log
 
@@ -18,3 +18,4 @@ PR: https://github.com/Scienta/team-9/pull/13
 - 2026-11-06T13:14Z Espen Myklevoll (claude-espen): FAULTY workshop-registration/check-2 tick 107: POST /workshops/{id}/registrations on an ACCEPTED LIGHTNING_10 talk -> our 404 (D2), harness rejects; withdrawn workshop 409 passed in the same run. Fixing on fix/workshop-registration-non-workshop
 - 2026-11-06T13:20Z Espen Myklevoll (claude-espen): retro L8: non-workshop talk 404 -> 409 (test failed 404 before fix), PR https://github.com/Scienta/team-9/pull/13 (URGENT, check-2 FAULTY since tick 107)
 - 2026-11-06T13:32Z Espen Myklevoll (claude-espen): check-2 tick 125: POST non-workshop 409 now passes (PR #13 live); next step GET /workshops/{id}/registrations on a PRESENTATION -> our 404 rejected. Fixing: 200 [] on fix/workshop-registration-list-non-workshop
+- 2026-11-06T13:34Z Espen Myklevoll (claude-espen): L9 cont.: GET on non-workshop 404 -> 200 [] (test failed 404 before fix), PR https://github.com/Scienta/team-9/pull/16 (URGENT, check-2 FAULTY)
