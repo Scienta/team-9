@@ -304,14 +304,18 @@ change made so it can't recur silently (with the file changed). Number them `L1`
   `@Transactional(isolation = READ_COMMITTED)` pin doesn't reach them: the JDBC driver sets it with a
   session-level `SET`, and the connection pooler in front of the database (the same reason advisory
   locks aren't available) runs the transaction on a backend that never saw it. So a lock-then-read
-  read the snapshot from before the lock wait. Methods with plain `@Transactional` (the 3-talk cap)
-  were exposed too. Our tests ran against plain Postgres, where the pin works.
+  read the snapshot from before the lock wait. Every lock-then-read lost its pin this way (the 3-talk
+  cap, co-speakers and acceptance too), and plain `@Transactional` methods ran at REPEATABLE READ as
+  well. Our tests ran against plain Postgres, where the pin works; the REPEATABLE READ tests set the
+  database default but not the dropped `SET`, so they passed on the broken code.
 - **Should have been caught by:** `/spec` and review-edge (what the database does between us and
   Postgres), and a test environment that behaves like production.
 - **Harness change:** `TransactionConfig` sets the level with `SET TRANSACTION ISOLATION LEVEL ...`
   as each transaction's first statement (DEFAULT means READ COMMITTED). `PooledIsolationTest`
   reproduces production (database default REPEATABLE READ, `setTransactionIsolation` dropped) and
-  rushes the workshop seats, one speaker in a slot, one talk per place and the 3-talk cap: before
-  the fix 26 of 20 seats, 3 talks of one speaker in a slot and 10 of 3 talks got through.
+  rushes the workshop seats, one speaker in a slot, one talk per place, the 3-talk cap, the
+  2 co-speakers and simultaneous decisions: before the fix 23 of 20 seats, 3 talks of one speaker
+  in a slot, 10 of 3 talks and 5 of 2 co-speakers got through, and a decision answered 500. It also
+  checks the driver is never asked for a session-level isolation `SET` (4 per two requests before).
   `workflow/checklists/spec-questions.md` item 11 and `review.md` ask for every new lock-guarded
   limit to have a rush there. `REVIEW.md` section 4.

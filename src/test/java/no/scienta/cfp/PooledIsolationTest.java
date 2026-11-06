@@ -181,6 +181,42 @@ class PooledIsolationTest {
         }
     }
 
+    // co-speakers: at most 2 per talk, also when they're added at once (workflow/co-speakers.md; review finding S1)
+    @Test
+    void coSpeakerRushNeverExceedsTwo() throws Exception {
+        for (int round = 0; round < ROUNDS; round++) {
+            long talk = talk(speaker(), "PRESENTATION");
+            List<Long> candidates = new ArrayList<>();
+            for (int i = 0; i < 5; i++) {
+                candidates.add(speaker());
+            }
+            List<CompletableFuture<HttpResponse<String>>> sent = new ArrayList<>();
+            for (long candidate : candidates) {
+                sent.add(async("PUT", "/talks/" + talk + "/co-speakers/" + candidate, null));
+            }
+            assertEquals(2, count(sent, 200), "round " + round);
+            assertEquals(2, jdbc.queryForObject("SELECT count(*) FROM talk_co_speaker WHERE talk_id = ?", Integer.class, talk));
+        }
+    }
+
+    // acceptance: two committee members deciding at once leave one decision, never a 500 (review finding S2)
+    @Test
+    void simultaneousDecisionsLeaveOneWinner() throws Exception {
+        for (int round = 0; round < ROUNDS; round++) {
+            long talk = talk(speaker(), "PRESENTATION");
+            for (int reviewer = 1; reviewer <= 2; reviewer++) {
+                assertEquals(200, send("PUT", "/talks/" + talk + "/ratings/" + reviewer, "{\"score\":4}").statusCode());
+            }
+            List<CompletableFuture<HttpResponse<String>>> sent = new ArrayList<>();
+            for (String status : new String[] {"ACCEPTED", "REJECTED", "ACCEPTED", "REJECTED"}) {
+                sent.add(async("PUT", "/talks/" + talk + "/status", "{\"status\":\"" + status + "\"}"));
+            }
+            assertEquals(1, count(sent, 200), "round " + round);
+            String status = jdbc.queryForObject("SELECT status FROM talk WHERE id = ?", String.class, talk);
+            assertTrue(status.equals("ACCEPTED") || status.equals("REJECTED"), status);
+        }
+    }
+
     // talks: at most 3 talks per speaker, also when they arrive at once
     @Test
     void submissionRushNeverExceedsTheCap() throws Exception {

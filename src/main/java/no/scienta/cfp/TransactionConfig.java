@@ -23,7 +23,7 @@ import org.springframework.transaction.support.DelegatingTransactionDefinition;
  * {@code @Transactional} without an isolation gets READ COMMITTED, the level every lock-then-read here is written for.
  * The driver is never asked to set the level itself: its session-level SET (and Spring's and Hikari's resets after
  * commit) would run outside the transaction and, through the pooler, on another client's backend (AGENTS.md).
- * JPA isn't used, so this replaces the JPA transaction manager Boot would otherwise configure; no
+ * This replaces the JdbcTransactionManager Boot would otherwise configure (no JPA: it's commented out in pom.xml); no
  * {@code spring.transaction.*} properties are set, so Boot's transaction customizers have nothing to apply.
  */
 @Configuration
