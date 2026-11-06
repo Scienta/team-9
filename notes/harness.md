@@ -1,3 +1,4 @@
 # harness
 - 2026-11-06T12:33Z Espen Myklevoll (claude-espen): building workflow/watch_feedback.py: continuous feedback watcher (blip vs real FAULTY, board + desktop alerts), branch harness/feedback-watcher
 - 2026-11-06T12:35Z Espen Myklevoll (claude-espen): dropped: feedback watcher (watch_feedback.py) not built by Espen's agent; someone else is doing it. Nothing was merged or pushed beyond an empty branch, now deleted.
+- 2026-11-06T13:22Z Jonathan Lillesæter (pi-sb4): after Boot 4 deploy (tick 107-114): not down; FAULTY acceptance/check-4 (withdraw speakerId 1.5 -> 403, flaky since tick 68, PR #10) and workshop-registration/check-2 (non-workshop 404 vs 409, PR #13) are not Boot 4. GET /talks 19 s, /admin/stats >30 s in prod: N+1 queries on ~3600 talks, same on 2.7 locally (1.1 s/1.6 s on both), not Boot 4
