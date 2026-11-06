@@ -70,6 +70,11 @@ HTTP 200
 [Asserts]
 jsonpath "$.status" == "ACCEPTED"
 
+# A speakerId that isn't a whole number is bad input, not "someone else"
+POST {{base_url}}/talks/{{talk}}/withdraw
+{ "speakerId": 1.5 }
+HTTP 400
+
 # Only the speaker withdraws
 POST {{base_url}}/talks/{{talk}}/withdraw
 { "speakerId": {{other_speaker}} }

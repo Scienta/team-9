@@ -112,3 +112,17 @@ change made so it can't recur silently (with the file changed). Number them `L1`
   log formats (`ERROR_LINE`, shown to match Boot 2.7 and Boot 4 ERROR lines and not WARN/INFO);
   `workflow/checklists/review.md` adds an item for server-level input and log format on upgrades;
   `.claude/agents/review-*.md` now say Spring Boot 4 / Java 25.
+
+## L8: withdraw took `speakerId: 1.5` as speaker 1, and acceptance/check-4 failed now and then (ticks 68-81)
+
+- **What happened:** acceptance/check-4 was FAULTY on and off from tick 68. Its transcript at tick 81:
+  `POST /talks/{id}/withdraw` with `{"speakerId":1.5}` answered 403 "only the speaker can withdraw a
+  talk"; the harness expected a 400. It only fails when the check's random body is fractional.
+- **Root cause:** `ConferenceService.withdraw` accepted any `Number` and called `.longValue()`, so 1.5
+  became speaker 1. The spec types `speakerId` as `integer`. Our JUnit and Hurl files tried only a
+  missing id and another valid speaker.
+- **Should have been caught by:** `/build` (tests for "wrong type" stopped at strings and absent fields)
+  and `review-edge`.
+- **Harness change:** `workflow/checklists/review.md` and `spec-questions.md` now name a fractional number
+  for an `integer` field. `AcceptanceTest` and `examples/acceptance.hurl` cover it; the JUnit test
+  failed on the old code with the harness's 403 before the fix.
