@@ -36,7 +36,7 @@ from (`lessons.md#L<n>`).
     repeat? Write the answer into both decisions (lessons.md L10).
 14. **Joins in reads.** A list or export that joins tables: is every joined column backed by a
     foreign key (`talk.speaker_id` isn't)? If not, an inner join silently drops the row when the
-    other side is missing. Decide what the row shows instead, and use a `LEFT JOIN` (lessons.md L13).
+    other side is missing. Decide what the row shows instead, and use a `LEFT JOIN` (lessons.md L14).
 
 ## House conventions
 

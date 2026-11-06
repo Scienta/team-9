@@ -86,17 +86,17 @@ class RatingsTest {
     }
 
     @Test
-    void averageRoundsHalfUpToOneDecimal() throws Exception {
+    void averageRoundsToTwoDecimals() throws Exception {
         long talk = talk(speaker());
         rate(talk, 1, 4);
         rate(talk, 2, 4);
         rate(talk, 3, 4);
         rate(talk, 4, 5);
         String t = get("/talks/" + talk);
-        assertEquals("4.3", value(t, "averageRating"), t); // 4.25
+        assertEquals("4.25", value(t, "averageRating"), t); // 2 decimals since ratings-cr R3
         assertEquals("4", value(t, "ratingCount"));
         rate(talk, 4, 3); // 15/4 = 3.75
-        assertEquals("3.8", value(get("/talks/" + talk), "averageRating"));
+        assertEquals("3.75", value(get("/talks/" + talk), "averageRating"));
     }
 
     @Test

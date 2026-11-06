@@ -213,7 +213,7 @@ change made so it can't recur silently (with the file changed). Number them `L1`
 - **Harness change:** `workflow/checklists/spec-questions.md`: an id in the body that doesn't exist
   is always 400. `SchedulingTest#badInputIsRejectedAndChangesNothing` and `examples/scheduling.hurl`
   "D3" replay the harness's request. `REVIEW.md` section 4.
-## L13: reviewers caught a dropped row, a Hurl file that could leave production booked, and a stale base in programme-export (build)
+## L14: reviewers caught a dropped row, a Hurl file that could leave production booked, and a stale base in programme-export (build)
 
 - **What happened:** the first build of programme-export passed every local gate. The three
   reviewers found: an inner `JOIN speaker` dropped a scheduled talk whose main speaker row is

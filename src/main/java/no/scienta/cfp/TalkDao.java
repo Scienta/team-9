@@ -17,12 +17,13 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 @Repository
 public class TalkDao {
 
-    // Each talk with its rating count and total, so a list is one query rather than one more per talk. LATERAL, so the
-    // totals are looked up per selected talk through rating's primary key, not aggregated over every rating.
+    // Each talk with its rating count, total, highest and lowest score, so a list is one query rather than one more per
+    // talk. LATERAL, so they're looked up per selected talk through rating's primary key, not aggregated over every
+    // rating. All four come from one statement, so they agree with each other (ratings-cr).
     private static final String SELECT = "SELECT t.id, t.title, t.format, t.duration, t.level, t.status, t.speaker_id, "
-            + "t.submitted_at, r.cnt AS rating_count, r.total AS rating_total FROM talk t "
-            + "CROSS JOIN LATERAL (SELECT COUNT(*) AS cnt, COALESCE(SUM(score), 0) AS total FROM rating "
-            + "WHERE rating.talk_id = t.id) r";
+            + "t.submitted_at, r.cnt AS rating_count, r.total AS rating_total, r.high AS rating_high, r.low AS rating_low "
+            + "FROM talk t CROSS JOIN LATERAL (SELECT COUNT(*) AS cnt, COALESCE(SUM(score), 0) AS total, "
+            + "COALESCE(MAX(score), 0) AS high, COALESCE(MIN(score), 0) AS low FROM rating WHERE rating.talk_id = t.id) r";
 
     private final JdbcTemplate jdbc;
 
@@ -39,7 +40,7 @@ public class TalkDao {
         t.submittedAt = new Date(millis);
         t.submittedOn = Utils.toUtcDate(millis);
         t.ratingCount = rs.getInt("rating_count");
-        t.averageRating = average(rs.getLong("rating_total"), t.ratingCount);
+        t.averageRating = average(rs.getLong("rating_total"), t.ratingCount, rs.getInt("rating_high"), rs.getInt("rating_low"));
         return t;
     };
 
@@ -90,12 +91,23 @@ public class TalkDao {
         return byTalk;
     }
 
-    // 1 decimal, half up (4.25 -> 4.3); null when nobody has rated the talk
-    static Double average(long total, int count) {
+    /** Talks with at least this many ratings leave one highest and one lowest score out of the average (ratings-cr R2). */
+    static final int TRIM_FROM = 5;
+
+    /**
+     * The average of the scores, leaving out exactly one highest and one lowest from {@link #TRIM_FROM} ratings on (R2);
+     * 2 decimals, ties to the even neighbour (R3: 3.125 -> 3.12), rounded on the exact fraction (D4). Null when nobody
+     * has rated the talk (R6).
+     */
+    static Double average(long total, int count, int high, int low) {
         if (count == 0) {
             return null;
         }
-        return BigDecimal.valueOf(total).divide(BigDecimal.valueOf(count), 1, RoundingMode.HALF_UP).doubleValue();
+        if (count >= TRIM_FROM) {
+            total -= high + low;
+            count -= 2;
+        }
+        return BigDecimal.valueOf(total).divide(BigDecimal.valueOf(count), 2, RoundingMode.HALF_EVEN).doubleValue();
     }
 
     // Call only while holding the talk row lock in a transaction. ON CONFLICT keeps a duplicate a no-op at the
