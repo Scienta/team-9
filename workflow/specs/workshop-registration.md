@@ -47,7 +47,7 @@ No existing response changes: `Talk` gets no new field.
 - **D2** A talk that exists but isn't a `WORKSHOP` → **409 on POST** (the talk exists, but only
   workshops take registrations, the same rule as D3), and 404 on GET (it has no registration list).
   First answer was 404 on both; the harness's workshop-registration/check-2 rejected the 404 on POST
-  at tick 107 (lessons.md L8). `CONFIRMED by Espen Myklevoll` (as 404; changed to 409 after the FAULTY check)
+  at tick 107 (lessons.md L9). `CONFIRMED by Espen Myklevoll` (as 404; changed to 409 after the FAULTY check)
 - **D3** A workshop that isn't `ACCEPTED` (`SUBMITTED`, `WAITLISTED`, `REJECTED`, `WITHDRAWN`) →
   409: the request is well-formed and the state forbids it (house convention). `CONFIRMED by Espen Myklevoll`
 - **D4** The 21st registration → 409, nothing stored (house convention: a limit reached). `CONFIRMED by Espen Myklevoll`

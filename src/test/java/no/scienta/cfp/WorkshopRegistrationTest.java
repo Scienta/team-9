@@ -78,7 +78,7 @@ class WorkshopRegistrationTest {
         assertEquals(0, list(rejected, 200).size());
 
         // An accepted talk that isn't a workshop: the talk exists, but only workshops take registrations,
-        // so 409 like a workshop that isn't accepted (harness workshop-registration/check-2; lessons.md L8).
+        // so 409 like a workshop that isn't accepted (harness workshop-registration/check-2; lessons.md L9).
         long presentation = accept(talk(speaker(), "PRESENTATION"));
         register(presentation, "A", unique("a"), 409);
         list(presentation, 404);

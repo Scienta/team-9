@@ -7,7 +7,7 @@ from (`lessons.md#L<n>`).
 ## Gaps to look for
 
 1. **Unknown ids.** Each id in the path or body that doesn't exist: which status? (talk, speaker, ...)
-2. **Malformed input.** Missing body, missing field, `null`, wrong type, empty or blank string,
+2. **Malformed input.** Missing body, missing field, `null`, wrong type (a fractional number such as `1.5` for an `integer` field, lessons.md L8), empty or blank string,
    wrong case for an enum, extra fields, non-numeric path id. Two that pass Spring's defaults
    silently (lessons.md L5): a **number or boolean where a string is expected** (Jackson turns `123`
    into `"123"`: use `StrictStringDeserializer` on the field) and a **NUL character** in a string
@@ -40,7 +40,7 @@ Our default answers, so every feature behaves the same way. A DECISION that foll
   Set by a person in review of workshop-registration D1; speaker registration predates it (lessons.md L6).
 - **404** for an id in the **path** that doesn't exist. Only then: if a resource with that id
   exists but is the wrong kind for the action (a talk that isn't a workshop), that's **409**, the
-  same as the wrong state (lessons.md L8).
+  same as the wrong state (lessons.md L9).
 - **400** for an id in the **body** that doesn't exist (as `POST /talks` does with `speakerId`),
   unless the request makes it the subject of the action. Write down which applies.
 - **409** for a well-formed request the current state forbids: a limit reached, an illegal state

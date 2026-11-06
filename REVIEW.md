@@ -89,7 +89,7 @@ registered for an accepted lightning talk; we answered 404 because our decision 
 workshop" as "no such workshop". The harness wants 409, the same as a workshop that isn't accepted:
 both conditions are one rule in the request. Three reviewer agents and a person's review had passed
 D2. The house convention now separates "nothing with that id" (404) from "exists but not eligible"
-(409) ([lessons.md](workflow/lessons.md) L8).
+(409) ([lessons.md](workflow/lessons.md) L9).
 
 ## 5. Reusable artifacts
 

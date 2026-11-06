@@ -272,7 +272,7 @@ HTTP 201
 [Captures]
 presentation_id: jsonpath "$.id"
 
-# D2: an accepted talk that isn't a workshop takes no registrations: 409 (harness check-2, lessons.md L8)
+# D2: an accepted talk that isn't a workshop takes no registrations: 409 (harness check-2, lessons.md L9)
 PUT {{base_url}}/talks/{{presentation_id}}/ratings/1
 { "score": 3 }
 HTTP 200
