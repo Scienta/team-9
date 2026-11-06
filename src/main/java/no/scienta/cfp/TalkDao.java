@@ -76,6 +76,15 @@ public class TalkDao {
         jdbc.update("DELETE FROM talk_co_speaker WHERE talk_id = ? AND speaker_id = ?", talkId, speakerId);
     }
 
+    public int reviewerCount(long talkId) {
+        Integer n = jdbc.queryForObject("SELECT COUNT(DISTINCT reviewer_id) FROM rating WHERE talk_id = ?", Integer.class, talkId);
+        return n == null ? 0 : n;
+    }
+
+    public void updateStatus(long talkId, String status) {
+        jdbc.update("UPDATE talk SET status = ? WHERE id = ?", status, talkId);
+    }
+
     public boolean exists(long id) {
         Integer n = jdbc.queryForObject("SELECT COUNT(*) FROM talk WHERE id = ?", Integer.class, id);
         return n != null && n > 0;
