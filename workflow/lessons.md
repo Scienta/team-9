@@ -196,3 +196,21 @@ change made so it can't recur silently (with the file changed). Number them `L1`
   the path that isn't one of the values is 404 (the path names nothing), in the body or query it
   stays 400. Fix: 404 on PUT, GET and DELETE; `SchedulingTest#badInputIsRejectedAndChangesNothing`
   and `examples/scheduling.hurl` "D1" replay `PUT /programme/R4/S1`. `REVIEW.md` section 4.
+
+## L13: claimed features failed for 15 and 27 ticks before anyone looked (co-speakers, workshop-registration)
+
+- **What happened:** co-speakers/check-1 was FAULTY from tick 46 to 60 and workshop-registration/check-2
+  from 107 to 133. Both were found only when a person asked an agent to read the feedback; the
+  second fix exposed a further failure (the GET after the POST) that again waited for a person.
+  Meanwhile scheduling/check-1 went FAULTY at tick 140 and was found by this watcher's first live run.
+- **Root cause:** feedback was read only on demand (`bin/next`, `/verify`, a `/drive` iteration up to
+  ~20 minutes apart); nothing watched it, and nothing told a deploy blip from a real failure.
+- **Should have been caught by:** a running watcher, from the first FAULTY tick.
+- **Harness change:** `workflow/watch_feedback.py` (tests in `workflow/test_watch_feedback.py`, built
+  from today's real transcripts; each safeguard shown to fail when broken): REAL / MOVED / blip /
+  RECOVERED to the board and the desktop. `/drive` and `/next` read its notes; `workflow/README.md`
+  says to keep one running.
+- **Review:** an independent reviewer of the first version found ten problems, among them a poll
+  that failed halfway lost its events for good, an OK tick between two polls merged two incidents,
+  and every worktree ran its own state and re-announced everything. Each has a test that failed
+  first; the watcher now decides on a copy of its state and keeps it only if the poll completes.

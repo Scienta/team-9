@@ -19,7 +19,10 @@ most valuable thing, does it fully, reports, and ends. The person's only jobs ar
       `/health`, `gh run list --branch main --limit 3` and `.github/fagdag/logs.sh --tail 200`, then
       notify a person at once with what you found. A fix goes on a branch with an `URGENT` PR, as below.
    1. **A claimed feature is FAULTY** (it's costing points): `/retro <slug>` with the check's
-      transcript. The fix PR's title starts with `URGENT`.
+      transcript. The fix PR's title starts with `URGENT`. Read `workflow/bin/work show notes/feedback`
+      first: the feedback watcher says whether it's REAL or a deploy blip (a blip needs nothing), and
+      a **MOVED** entry means the last fix worked and the check now fails one step later. Fix the
+      new request, and any sibling case your last fix flagged as untested (lessons.md L9).
    2. **SPEC CHANGED** for a feature we built or are building: update the team spec and tests on a
       branch, and `/retro` if what we built is now wrong.
    3. **An open PR of ours has new review comments or failing CI** (`gh pr list --author @me`,

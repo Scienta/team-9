@@ -100,6 +100,9 @@ on every verb and the Hurl file replays the request ([lessons.md](workflow/lesso
 
 ## 5. Reusable artifacts
 
+- [`workflow/watch_feedback.py`](workflow/watch_feedback.py): watches a scoring/monitoring feed and
+  reports only changes, telling a deploy blip from a real failure and spotting when a failing check
+  gets further (the fix worked, the next bug shows). Pure decision function, tested on real data.
 - [`workflow/bin/work`](workflow/bin/work): a race-safe shared agent board on an orphan git branch
   (compare-and-swap pushes, no checkout), tested with concurrent writers in
   [`workflow/test_work.py`](workflow/test_work.py).
