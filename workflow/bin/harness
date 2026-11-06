@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+# GET a path on the organisers' harness with the team token, and print the body.
+#
+# Usage: workflow/bin/harness <path>          e.g. /api/teams/team-9/feedback
+#        workflow/bin/harness --status <path> prints only the HTTP status code (never fails on 4xx)
+#
+# - Reads the URL from .fagdag/harness-url and the token from .fagdag/harness-token. The token is
+#   never printed; it isn't even passed on the command line (curl reads the header from stdin).
+# - Waits out 429s (bursts of 5, then 1 request/s) using Retry-After, up to 5 times.
+# - Exits 1 with the status on stderr for any other non-2xx, unless --status is given.
+set -euo pipefail
+
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+status_only=false
+if [ "${1:-}" = "--status" ]; then status_only=true; shift; fi
+path="${1:?usage: harness [--status] <path>}"
+
+url="$(tr -d '[:space:]' <"$root/.fagdag/harness-url")"
+token_file="$root/.fagdag/harness-token"
+# In a git worktree (e.g. the /drive loop's) the gitignored token lives in the main checkout.
+if [ ! -s "$token_file" ]; then
+  main_root="$(cd "$root" && cd "$(git rev-parse --git-common-dir)/.." && pwd)"
+  token_file="$main_root/.fagdag/harness-token"
+fi
+if [ ! -s "$token_file" ]; then
+  echo "harness: $token_file is missing or empty; a person pastes the team token from the harness /feedback page" >&2
+  exit 1
+fi
+token="$(tr -d '[:space:]' <"$token_file")"
+case "$token" in
+  *Bearer*|*Authorization*|*'"'*|*/*)
+    echo "harness: $token_file should hold only the token, not a header or a curl command" >&2
+    exit 1 ;;
+esac
+
+body="$(mktemp)" headers="$(mktemp)"
+trap 'rm -f "$body" "$headers"' EXIT
+
+for attempt in 1 2 3 4 5 6; do
+  code="$(printf 'header = "Authorization: Bearer %s"\n' "$token" |
+    curl -sS -K - -o "$body" -D "$headers" -w '%{http_code}' "$url$path")"
+  if [ "$code" != 429 ]; then break; fi
+  wait="$(awk 'tolower($1)=="retry-after:" {print $2+0}' "$headers" | tail -1)"
+  sleep "${wait:-1}"
+done
+
+if $status_only; then echo "$code"; exit 0; fi
+if [ "${code:0:1}" != 2 ]; then
+  echo "harness: GET $path answered $code" >&2
+  head -c 500 "$body" >&2; echo >&2
+  exit 1
+fi
+cat "$body"

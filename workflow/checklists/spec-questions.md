@@ -1,0 +1,43 @@
+# Spec questions
+
+`/spec` walks every item for every feature request and turns each one that applies into a rule or a
+DECISION in the team spec. `/retro` adds items here when a gap slipped through: say where it came
+from (`lessons.md#L<n>`).
+
+## Gaps to look for
+
+1. **Unknown ids.** Each id in the path or body that doesn't exist: which status? (talk, speaker, ...)
+2. **Malformed input.** Missing body, missing field, `null`, wrong type, empty or blank string,
+   wrong case for an enum, extra fields, non-numeric path id.
+3. **Limits.** Every "at most N" / "at least N": what happens at N, at N+1, and does it hold under
+   concurrent requests?
+4. **Idempotency.** Doing the same thing twice: a no-op returning 200, or an error?
+5. **Undo.** Removing something that isn't there: 404, or a no-op 200?
+6. **State.** Every state and every transition: which are allowed, which are final, and what does
+   a forbidden one answer? Draw the table.
+7. **Who may do it.** Anyone, or only an owner (a `speakerId` in the body)? What if it's the wrong one?
+8. **Ordering.** Every list: in what order? Ties?
+9. **Where it shows.** Every existing response that must now show the new field or state
+   (`POST /talks`, `GET /talks/{id}`, `GET /speakers/{id}/talks`, lists, reports, CSV).
+10. **Effects on old rules.** Does it change a counted limit (the 3-talk limit), a filter, a
+    sort, the ratings average?
+11. **Concurrency.** Two people doing conflicting things at once: what stops an illegal state?
+    (Row locks or conditional writes: advisory locks are not available.)
+12. **Formats.** Exact string formats for any new timestamps or numbers.
+
+## House conventions
+
+Our default answers, so every feature behaves the same way. A DECISION that follows one says so.
+
+- **400** for a malformed request: missing, null, blank, wrong type, unknown enum value (case-sensitive).
+- **404** for an id in the **path** that doesn't exist.
+- **400** for an id in the **body** that doesn't exist (as `POST /talks` does with `speakerId`),
+  unless the request makes it the subject of the action. Write down which applies.
+- **409** for a well-formed request the current state forbids: a limit reached, an illegal state
+  transition, a duplicate.
+- **403** only if the request explicitly has an owner and the caller is someone else; otherwise 409.
+- Errors use the app's existing shape (`ResponseStatusException` with a short message).
+- Repeating an operation that already happened is a **no-op 200** returning the current resource,
+  unless the request says otherwise.
+- A forbidden operation **changes nothing**.
+- Lists are oldest first (insertion order) unless the request says otherwise.

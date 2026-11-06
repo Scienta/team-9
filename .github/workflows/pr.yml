@@ -1,0 +1,41 @@
+# Gates every pull request before a person can merge it (and so before it deploys):
+#   - tests: the whole build and test suite (Testcontainers needs Docker, which the runner has)
+#   - decisions: no team spec may have a DECISION a person hasn't confirmed (workflow/bin/check-decisions)
+# Make them required checks on main (Settings → Branches) so a red PR can't be merged.
+name: pr
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "11"
+      - name: Cache ~/.m2
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.m2/repository
+            ~/.m2/wrapper
+          key: m2-${{ hashFiles('**/pom.xml', '.mvn/wrapper/maven-wrapper.properties') }}
+          restore-keys: m2-
+      - name: Build and test
+        run: ./mvnw -B package
+
+  decisions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v5
+      - name: Every decision confirmed by a person
+        run: workflow/bin/check-decisions
