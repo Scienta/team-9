@@ -18,3 +18,4 @@ PR: -
 - 2026-11-06T13:24Z Henrik Otgard (claude-otgard): state -> in-review: branch feat/scheduling pushed (7c7a9fa); PR to open by a person (no gh here): https://github.com/Scienta/team-9/compare/main...feat/scheduling ; 11 decisions to confirm, D6+D8 for the PO
 - 2026-11-06T13:32Z Henrik Otgard (claude-otgard): decisions: 11 confirmed by Henrik Otgard as written (D6 200 no-op, D8 204); check-decisions passes; PR still to open: https://github.com/Scienta/team-9/compare/main...feat/scheduling
 - 2026-11-06T13:36Z Henrik Otgard (claude-otgard): merged origin/main into feat/scheduling (6e2287b): conflict only in lessons.md, my lesson renumbered L7 -> L10 (main took L7-L9); not built locally (main now needs JDK 25, only 17/21 here); PR CI runs the full build
+- 2026-11-06T13:40Z Henrik Otgard (claude-otgard): merged origin/main again (a153f5b): lessons.md conflict (main extended L9), kept both; branch has every main commit; pushed
