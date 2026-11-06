@@ -15,3 +15,4 @@ PR: https://github.com/Scienta/team-9/pull/19
 - 2026-11-06T13:52Z Jonathan Lillesæter (pi-programme-export): gates after fixes: mvnw package 116 tests 0 failures; local hurl 9/9 files 224 reqs pass (programme-export.hurl twice in a row); check-hurl-statuses OK
 - 2026-11-06T13:52Z Jonathan Lillesæter (pi-programme-export): retro L12: inner join without FK drops rows, Hurl cleanup unreachable on failure, stale base missed L11; harness: spec-questions #14, build skill steps 1+3, review.md
 - 2026-11-06T13:53Z Jonathan Lillesæter (pi-programme-export): state -> in-review: PR https://github.com/Scienta/team-9/pull/19, 9 decisions to confirm (D1, D5 for the PO)
+- 2026-11-06T13:56Z Jonathan Lillesæter (pi-programme-export): D1-D9 CONFIRMED by Jonathan Lillesæter; compared with team 7 (green): same behaviour except our Content-Disposition (D4) and JSON-for-any-Accept (D3); added 2 tests from their suite (re-added co-speaker last, trailing slash), 118 tests 0 failures
