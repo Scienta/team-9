@@ -15,7 +15,7 @@ PR. `/retro` adds items when a review let something through: say where it came f
 ## Edge cases and concurrency (`review-edge`)
 
 - [ ] Every item in `spec-questions.md` was considered for this feature.
-- [ ] Bad input never gives a 500 (null, blank, wrong type, unknown enum, non-numeric path id).
+- [ ] Bad input never gives a 500 (null, blank, wrong type, a fractional number for an `integer` field, unknown enum, non-numeric path id).
 - [ ] A rejected request changes nothing in the database.
 - [ ] Limits and state transitions hold under concurrent requests: row lock (`SELECT … FOR UPDATE`)
       or conditional write, inside one transaction. No advisory locks, no session `SET`.

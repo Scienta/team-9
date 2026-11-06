@@ -7,7 +7,7 @@ from (`lessons.md#L<n>`).
 ## Gaps to look for
 
 1. **Unknown ids.** Each id in the path or body that doesn't exist: which status? (talk, speaker, ...)
-2. **Malformed input.** Missing body, missing field, `null`, wrong type, empty or blank string,
+2. **Malformed input.** Missing body, missing field, `null`, wrong type (a fractional number such as `1.5` for an `integer` field, lessons.md L8), empty or blank string,
    wrong case for an enum, extra fields, non-numeric path id. Two that pass Spring's defaults
    silently (lessons.md L5): a **number or boolean where a string is expected** (Jackson turns `123`
    into `"123"`: use `StrictStringDeserializer` on the field) and a **NUL character** in a string

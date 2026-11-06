@@ -319,7 +319,7 @@ public class ConferenceService {
     @Transactional(isolation = Isolation.READ_COMMITTED)
     public TalkDto withdraw(long talkId, Map<String, Object> body) {
         Object speakerId = body.get("speakerId");
-        if (!(speakerId instanceof Number) || ((Number) speakerId).longValue() < 1) {
+        if (!(speakerId instanceof Integer || speakerId instanceof Long) || ((Number) speakerId).longValue() < 1) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "speakerId is required");
         }
         try {
