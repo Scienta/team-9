@@ -213,7 +213,7 @@ change made so it can't recur silently (with the file changed). Number them `L1`
 - **Harness change:** `workflow/checklists/spec-questions.md`: an id in the body that doesn't exist
   is always 400. `SchedulingTest#badInputIsRejectedAndChangesNothing` and `examples/scheduling.hurl`
   "D3" replay the harness's request. `REVIEW.md` section 4.
-## L13: reviewers caught a dropped row, a Hurl file that could leave production booked, and a stale base in programme-export (build)
+## L14: reviewers caught a dropped row, a Hurl file that could leave production booked, and a stale base in programme-export (build)
 
 - **What happened:** the first build of programme-export passed every local gate. The three
   reviewers found: an inner `JOIN speaker` dropped a scheduled talk whose main speaker row is
@@ -234,3 +234,38 @@ change made so it can't recur silently (with the file changed). Number them `L1`
   with `[]` before), pre-clearing DELETEs in `examples/programme-export.hurl`,
   `#fullProgrammeTakesAFixedNumberOfQueries` (fails at 17 statements with a per-row query), and a
   `Content-Disposition` assert in JUnit and Hurl.
+
+## L15: two green PRs merged into a main whose tests didn't compile (tick ~170)
+
+- **What happened:** PR #23 (cpu-perf) gave `RequestLoggingFilter` a `RuntimeMetrics` constructor
+  argument; PR #7 (mutation-testing), branched earlier, added `RequestLoggingFilterTest` calling the
+  old no-argument constructor. Each PR's CI was green against the main it was built on; merged
+  minutes apart, main's tests no longer compiled, so the deploy gate blocked every deploy.
+  `RuntimeMetricsTest` also failed on a machine with a Norwegian locale (`0,500`): the metrics
+  formatted numbers with the default locale.
+- **Root cause:** CI tests a PR against the main it was branched from, not the main it merges into;
+  nothing makes a PR re-run on top of a main that moved. Locale: `String.format` without a locale.
+- **Should have been caught by:** the merge (an up-to-date branch requirement), and `/build`'s
+  local gate run on a non-English machine.
+- **Harness change:** the test was fixed in PR #24 (`new RuntimeMetrics(null, 10)`); the formatting
+  uses `Locale.ROOT`. Still needed from a person: branch protection on `main` with "Require branches
+  to be up to date before merging" (or a merge queue), so a PR's checks run on the main it lands on.
+
+## L16: reviewers caught a floating-point stats mean and tests that couldn't tell exact from float rounding (ratings-cr, build)
+
+- **What happened:** the first build of ratings-cr passed every local gate. The reviewers then found:
+  `/admin/stats` summed the talk averages as `double`, so a true tie like (1.43 + 1.67) / 2 = 1.55
+  became 1.5499999999999998 and showed 1.5, not 1.6 (on main too, but 2-decimal averages make it
+  far more common, and it made our stats test depend on test order); every half-even test case
+  divided by 8, which is exact in binary, so a floating-point implementation would have passed
+  (D4); and the only ranking tie was 5.0 vs 5.0, equal before rounding too, so sorting on the
+  unrounded value would have passed (D5).
+- **Root cause:** the tests used the spec's own examples (3.125, 3.375), which happen to be the
+  easy cases; nothing asked for a value that tells exact rounding from float rounding, or a tie
+  that only rounding creates.
+- **Should have been caught by:** `/spec` (D4 and D5 named the rule but not the case that proves it)
+  and `/build` step 1.
+- **Harness change:** `workflow/checklists/spec-questions.md` item 12 asks for exact rounding and the
+  two cases (a non-binary tie like 43/40 = 1.075, a pair that ties only after rounding). Fixed:
+  `/admin/stats` sums and divides as `BigDecimal` (`RatingsCrStatsTest` failed with 1.5 before);
+  `RatingsCrTest` and `examples/ratings-cr.hurl` have the 1.075 case and the 3.125 vs 3.1176 tie.

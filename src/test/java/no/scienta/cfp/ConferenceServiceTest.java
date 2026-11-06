@@ -15,8 +15,6 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -287,12 +285,15 @@ class ConferenceServiceTest {
         when(talkDao.findAll()).thenReturn(new ArrayList<>(Arrays.asList(talks)));
     }
 
-    /** A talk whose ratings sum to {@code total} over {@code count} reviewers, as TalkDao's query fills it in. */
+    /**
+     * A talk whose ratings sum to {@code total} over {@code count} reviewers, as TalkDao's query fills it in. Only for
+     * fewer than 5 ratings, where nothing is left out of the average (ratings-cr R1), so no highest or lowest is needed.
+     */
     private static TalkDto rated(long id, long total, int count) {
+        assertTrue(count < TalkDao.TRIM_FROM, "rated() doesn't model the trim");
         TalkDto t = talk(id, 1, 45, "PRESENTATION");
         t.ratingCount = count;
-        t.averageRating = count == 0 ? null
-                : BigDecimal.valueOf(total).divide(BigDecimal.valueOf(count), 1, RoundingMode.HALF_UP).doubleValue();
+        t.averageRating = TalkDao.average(total, count, 0, 0);
         return t;
     }
 

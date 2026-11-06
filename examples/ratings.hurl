@@ -61,7 +61,7 @@ PUT {{base_url}}/talks/{{first_talk}}/ratings/2
 }
 HTTP 200
 
-# R4: average of 4 and 5, rounded to 1 decimal
+# R4: average of 4 and 5 (2 decimals since the ratings change request, ratings-cr.hurl)
 GET {{base_url}}/talks/{{first_talk}}
 HTTP 200
 [Asserts]

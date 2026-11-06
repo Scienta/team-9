@@ -148,7 +148,7 @@ class UpgradeContractTest {
         assertTrue(body.contains("\"averageRating\":4.5,\"ratingCount\":2"), body);
         send("PUT", "/talks/" + talk + "/ratings/3", "{\"score\":5}");
         body = send("GET", "/talks/" + talk, null).body();
-        assertTrue(body.contains("\"averageRating\":4.7,\"ratingCount\":3"), body);
+        assertTrue(body.contains("\"averageRating\":4.67,\"ratingCount\":3"), body); // 2 decimals since ratings-cr
     }
 
     // ---------------------------------------------------------------- errors
