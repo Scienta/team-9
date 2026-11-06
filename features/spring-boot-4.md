@@ -17,3 +17,4 @@ PR: https://github.com/Scienta/team-9/pull/11
 - 2026-11-06T13:04Z Jonathan Lillesæter (pi-sb4): decisions D1-D9 confirmed by Jonathan; cross-checked team-7 upgrade: their submittedAt Z / submittedOn zone bug doesn't apply (TZ=Pacific/Kiritimati check), test added; 70 tests green
 - 2026-11-06T13:06Z Jonathan Lillesæter (pi-sb4): PR #11 CI all green (tests on JDK 25, decisions, not-work); ready for a person to merge
 - 2026-11-06T13:09Z Jonathan Lillesæter (pi-sb4): rebased on main (workshop-registration merged): lessons conflict (ours now L7), workshop code ported to jakarta/Jackson 3; 82 tests green, hurl 7/7 files 126 reqs, diff-upgrade 220 reqs: workshop identical except D8
+- 2026-11-06T13:11Z Jonathan Lillesæter (pi-sb4): CI decisions job failed: check-hurl-statuses died silently on a spec with no API table; added table + hurl 404, script now reports it; hurl 7/7 files 127 reqs
