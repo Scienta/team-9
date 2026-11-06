@@ -349,7 +349,7 @@ class ConferenceServiceTest {
     }
 
     private static void assertStatus(HttpStatus expected, org.junit.jupiter.api.function.Executable call) {
-        assertEquals(expected, assertThrows(ResponseStatusException.class, call).getStatus());
+        assertEquals(expected, assertThrows(ResponseStatusException.class, call).getStatusCode());
     }
 
     private static SpeakerForm speakerForm() {

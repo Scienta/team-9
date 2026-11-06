@@ -191,7 +191,10 @@ public class ConferenceService {
         try {
             lockTalk(talkId);
             getSpeaker(speakerId);
-            talkDao.removeCoSpeaker(talkId, speakerId);
+            if (!talkDao.removeCoSpeaker(talkId, speakerId)) {
+                // Includes the main speaker, and a repeated DELETE: unlike a repeated PUT, it's not a no-op.
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "speaker is not a co-speaker of this talk");
+            }
             return getTalk(talkId);
         } catch (DataAccessException e) {
             throw lockTimeoutOr(e);
@@ -201,7 +204,7 @@ public class ConferenceService {
     /** Only lock_not_available (55P03) becomes 503; deadlocks, serialization failures etc. propagate unchanged. */
     private static RuntimeException lockTimeoutOr(DataAccessException e) {
         if (LockTimeoutException.isLockNotAvailable(e)) {
-            log.warn("co-speaker mutation timed out waiting for talk lock: " + e.getMostSpecificCause().getMessage());
+            log.warn("talk mutation timed out waiting for talk lock: " + e.getMostSpecificCause().getMessage());
             return new LockTimeoutException(e);
         }
         return e;
@@ -283,6 +286,58 @@ public class ConferenceService {
         // return Utils.roundRating((double) total / count);
     }
 
+    /**
+     * Committee decision: SUBMITTED becomes ACCEPTED, REJECTED or WAITLISTED, and WAITLISTED becomes ACCEPTED or
+     * REJECTED. Everything else is final. Accepting needs ratings from two different reviewers. The talk row is
+     * locked, so two simultaneous decisions are applied one after the other, the second against the first's result.
+     * READ_COMMITTED, so the status is read after the lock wait and sees what the previous decision committed.
+     */
+    @Transactional(isolation = Isolation.READ_COMMITTED)
+    public TalkDto decide(long talkId, Map<String, Object> body) {
+        Object requested = body.get("status");
+        if (!(requested instanceof String) || !Arrays.asList("ACCEPTED", "REJECTED", "WAITLISTED").contains(requested)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "status must be ACCEPTED, REJECTED or WAITLISTED");
+        }
+        String status = (String) requested;
+        try {
+            lockTalk(talkId);
+            String current = getTalk(talkId).status;
+            boolean open = "SUBMITTED".equals(current) || "WAITLISTED".equals(current);
+            if (!open || status.equals(current)) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "a " + current + " talk can't become " + status);
+            }
+            if ("ACCEPTED".equals(status) && talkDao.reviewerCount(talkId) < 2) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "a talk needs ratings from 2 reviewers to be accepted");
+            }
+            talkDao.updateStatus(talkId, status);
+            return getTalk(talkId);
+        } catch (DataAccessException e) {
+            throw lockTimeoutOr(e);
+        }
+    }
+
+    @Transactional(isolation = Isolation.READ_COMMITTED)
+    public TalkDto withdraw(long talkId, Map<String, Object> body) {
+        Object speakerId = body.get("speakerId");
+        if (!(speakerId instanceof Integer || speakerId instanceof Long) || ((Number) speakerId).longValue() < 1) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "speakerId is required");
+        }
+        try {
+            lockTalk(talkId);
+            TalkDto talk = getTalk(talkId);
+            if (talk.speakerId != ((Number) speakerId).longValue()) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "only the speaker can withdraw a talk");
+            }
+            if ("REJECTED".equals(talk.status) || "WITHDRAWN".equals(talk.status)) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "a " + talk.status + " talk can't be withdrawn");
+            }
+            talkDao.updateStatus(talkId, "WITHDRAWN");
+            return getTalk(talkId);
+        } catch (DataAccessException e) {
+            throw lockTimeoutOr(e);
+        }
+    }
+
     // ---------------------------------------------------------------- statistics
 
     public Map<String, Object> statistics() {
@@ -324,8 +379,10 @@ public class ConferenceService {
 
     @Transactional
     public Map<String, Object> rate(long talkId, long reviewerId, Map<String, Object> body) {
-        if (reviewerId < 1) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "reviewerId must be positive");
+        // The spec allows any positive whole number, but rating.reviewer_id is an INTEGER and widening it would rewrite
+        // the table (schema changes must be additive). 400 beats the 500 the insert would give.
+        if (reviewerId < 1 || reviewerId > Integer.MAX_VALUE) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "reviewerId must be between 1 and " + Integer.MAX_VALUE);
         }
         Object score = body.get("score");
         if (!(score instanceof Integer)) {

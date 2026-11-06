@@ -35,14 +35,20 @@ if [ ! -f "examples/$slug.hurl" ]; then
 elif HURL="$root/workflow/bin/hurl" examples/run.sh "$base" >"$out" 2>&1; then
   hurl_line="OK: $(grep -E '^Executed (files|requests)' "$out" | tr '\n' ' ' | tr -s ' ')all passed"
 else
-  hurl_line="FAIL: $(grep -E '^(Failed files|Succeeded files)' "$out" | tr '\n' ' ')"
+  # grep finds nothing when Hurl didn't get as far as a summary (e.g. no Docker): don't let set -e
+  # end the script silently, say so and show the output below.
+  summary="$(grep -E '^(Failed files|Succeeded files)' "$out" | tr '\n' ' ' || true)"
+  hurl_line="FAIL: ${summary:-examples/run.sh failed before any summary (see the output below)}"
   failed=1
 fi
 
-since="$(git log -1 --format=%cI origin/main | xargs -I{} date -u -d {} +%Y-%m-%dT%H:%M:%SZ)"
+# git formats the date itself: `date -d` is GNU-only and fails on macOS.
+since="$(TZ=UTC git log -1 --date=format-local:%Y-%m-%dT%H:%M:%SZ --format=%cd origin/main)"
 # Only real errors: ERROR-level lines and stack frames. WARN lines for rejected input (a 400) are expected.
+# Boot 2.7 logged "2026-11-06 12:38:06.315 ERROR", Boot 4 logs "2026-11-06T12:38:06.315Z ERROR" (or +01:00).
+ERROR_LINE='^[0-9-]+[ T][0-9:.]+(Z|[+-][0-9:]+)? +ERROR |^Caused by|^\s+at '
 errors="$(.github/fagdag/logs.sh --tail 2000 --since "$since" 2>/dev/null |
-  sed 's/^[^ ]* //' | jq -r '.message // empty' 2>/dev/null | grep -E '^[0-9-]+ [0-9:.]+ +ERROR |^Caused by|^\s+at ' | cut -c1-300 | head -20 || true)"
+  sed 's/^[^ ]* //' | jq -r '.message // empty' 2>/dev/null | grep -E "$ERROR_LINE" | cut -c1-300 | head -20 || true)"
 if [ -z "$errors" ]; then
   logs_line="OK: no ERROR lines or stack traces in the logs since $since"
 else

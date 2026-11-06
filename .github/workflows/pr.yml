@@ -1,6 +1,7 @@
 # Gates every pull request before a person can merge it (and so before it deploys):
 #   - tests: the whole build and test suite (Testcontainers needs Docker, which the runner has)
 #   - decisions: no team spec may have a DECISION a person hasn't confirmed (workflow/bin/check-decisions)
+#   - not-work: the shared agent board branch `work` never merges into main (.claude/rules/work-branch.md)
 # Make them required checks on main (Settings → Branches) so a red PR can't be merged.
 name: pr
 
@@ -20,7 +21,8 @@ jobs:
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: "11"
+          # The same version the Dockerfile builds with; a branch that changes Java changes this file.
+          java-version-file: .java-version
       - name: Cache ~/.m2
         uses: actions/cache@v4
         with:
@@ -32,6 +34,19 @@ jobs:
       - name: Build and test
         run: ./mvnw -B package
 
+  not-work:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: The work board never merges into main
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          if [ "$HEAD_REF" = work ]; then
+            echo "::error::'work' is the agent board and never merges into main (.claude/rules/work-branch.md). Close this PR."
+            exit 1
+          fi
+
   decisions:
     runs-on: ubuntu-latest
     timeout-minutes: 2
@@ -39,3 +54,10 @@ jobs:
       - uses: actions/checkout@v5
       - name: Every decision confirmed by a person
         run: workflow/bin/check-decisions
+      - name: Every API status has a Hurl request (workflow/lessons.md L5)
+        run: |
+          for spec in workflow/specs/*.md; do
+            [ -e "$spec" ] || continue
+            slug="$(basename "$spec" .md)"
+            if [ -f "examples/$slug.hurl" ]; then workflow/bin/check-hurl-statuses "$slug"; fi
+          done

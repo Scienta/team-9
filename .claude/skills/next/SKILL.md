@@ -6,7 +6,8 @@ description: Fetch every feature spec from the harness, list each feature's stat
 # /next
 
 1. Run `workflow/bin/next`. It fetches new and changed specs into `specs/`, reads branch and PR
-   state from GitHub, and prints a table and a suggestion.
+   state from GitHub and who has taken what from the shared `work` board, and prints a table and
+   a suggestion. Also run `workflow/bin/work show` and mention anything `blocked` (a person is needed).
 2. Show the user the table and the suggestion as printed. Add, in a sentence or two:
    - For a **new** feature: what it asks for (read `specs/<slug>.md`).
    - For **SPEC CHANGED**: what changed (`git diff specs/<slug>.md`) and whether something we built

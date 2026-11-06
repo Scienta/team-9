@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# Fails if this clone's local `main` has commits that aren't on origin/main: work committed straight
+# onto main, which is one `git push` (or someone else's merge of this checkout) away from deploying
+# without a PR (lessons.md L4). `bin/next` runs it, so every session and /drive iteration sees it.
+#
+# Usage: workflow/bin/check-main        (doesn't fetch; run after `git fetch origin`)
+set -euo pipefail
+cd "$(dirname "${BASH_SOURCE[0]}")/../.."
+git rev-parse -q --verify refs/heads/main >/dev/null || exit 0
+git rev-parse -q --verify refs/remotes/origin/main >/dev/null || exit 0
+ahead="$(git log --oneline origin/main..main)"
+if [ -n "$ahead" ]; then
+  echo "STOP: local main has $(wc -l <<<"$ahead" | tr -d ' ') commit(s) that aren't on origin/main:" >&2
+  sed 's/^/  /' <<<"$ahead" >&2
+  echo "Don't push main, and don't merge it anywhere. Ask a person to move the commits to a branch" >&2
+  echo "(git branch <topic> main), open a PR from it, and reset main to origin/main once nobody has" >&2
+  echo "uncommitted work in that checkout (lessons.md L4)." >&2
+  exit 1
+fi

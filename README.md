@@ -142,14 +142,13 @@ mvn test
 Opt-in via the `mutation` profile; `./mvnw package` and the deploy are unaffected.
 
 ```
-./mvnw -Pmutation test-compile org.pitest:pitest-maven:mutationCoverage
-# fail the build below a kill rate:
-./mvnw -Pmutation test-compile org.pitest:pitest-maven:mutationCoverage -Dpit.mutationThreshold=60
+./mvnw -Pmutation -Dmaven.build.cache.enabled=false test-compile org.pitest:pitest-maven:mutationCoverage \
+  -Dpit.targetClasses=no.scienta.cfp.WorkshopService   # omit to mutate everything (slow)
 ```
 
-Report: `target/pit-reports/index.html`. Runs are incremental (history in `target/pit-history/`);
-`./mvnw clean` for a full run. `-Dpit.threads=N` sets the number of parallel minions; each starts its
-own Testcontainers Postgres, so it's safe to run in several worktrees at once.
+Report: `target/pit-reports/index.html`. `-Dpit.mutationThreshold=N` fails below N % killed;
+`-Dpit.threads=N` sets the number of parallel minions. Each starts its own Testcontainers Postgres,
+so it's safe to run in several worktrees at once.
 
 With Podman instead of Docker:
 

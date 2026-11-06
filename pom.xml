@@ -12,16 +12,17 @@
     <description>Call for papers backend</description>
 
     <properties>
-        <java.version>11</java.version>
-        <maven.compiler.release>11</maven.compiler.release>
+        <java.version>25</java.version>
+        <maven.compiler.release>25</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <spring-boot.version>2.7.18</spring-boot.version>
-        <testcontainers.version>1.21.4</testcontainers.version>
-        <pitest.version>1.19.1</pitest.version>
-        <pitest-junit5.version>1.2.2</pitest-junit5.version>
+        <spring-boot.version>4.1.2</spring-boot.version>
+        <pitest.version>1.30.2</pitest.version>
+        <pitest-junit5.version>1.2.3</pitest-junit5.version>
         <!-- Override on the command line, e.g. -Dpit.mutationThreshold=60 to fail below 60 % killed. -->
         <pit.mutationThreshold>0</pit.mutationThreshold>
         <pit.threads>2</pit.threads>
+        <!-- Narrow a run to what you changed, e.g. -Dpit.targetClasses=no.scienta.cfp.WorkshopService (globs allowed). -->
+        <pit.targetClasses>no.scienta.cfp.*</pit.targetClasses>
     </properties>
 
     <!-- We can't use spring-boot-starter-parent because of the old company parent pom,
@@ -41,7 +42,7 @@
     <dependencies>
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-web</artifactId>
+            <artifactId>spring-boot-starter-webmvc</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -74,8 +75,7 @@
         </dependency>
         <dependency>
             <groupId>org.testcontainers</groupId>
-            <artifactId>postgresql</artifactId>
-            <version>${testcontainers.version}</version>
+            <artifactId>testcontainers-postgresql</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>
@@ -86,15 +86,18 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.10.1</version>
+                <version>3.15.0</version>
                 <configuration>
-                    <release>11</release>
+                    <release>25</release>
+                    <!-- Spring 6.1+ needs -parameters to bind @PathVariable/@RequestParam by name (the Boot parent
+                         pom would add it, but we import the BOM instead). -->
+                    <parameters>true</parameters>
                 </configuration>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
-                <version>3.5.4</version>
+                <version>3.5.6</version>
             </plugin>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
@@ -134,7 +137,7 @@
                         </dependencies>
                         <configuration>
                             <targetClasses>
-                                <param>no.scienta.cfp.*</param>
+                                <param>${pit.targetClasses}</param>
                             </targetClasses>
                             <targetTests>
                                 <param>no.scienta.cfp.*</param>
@@ -152,10 +155,6 @@
                             <timestampedReports>false</timestampedReports>
                             <!-- Integration tests boot Spring and hit Postgres: give mutants more slack. -->
                             <timeoutConstant>10000</timeoutConstant>
-                            <!-- Incremental analysis: reuse results for unchanged code between runs. -->
-                            <!-- Kept in target/ (not the shared tmpdir default) so worktrees don't share it. -->
-                            <historyInputFile>${project.build.directory}/pit-history/history.bin</historyInputFile>
-                            <historyOutputFile>${project.build.directory}/pit-history/history.bin</historyOutputFile>
                         </configuration>
                         <executions>
                             <execution>

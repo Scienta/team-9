@@ -3,13 +3,15 @@
 Passing tests only prove the code runs; PIT proves the tests would notice if it were wrong. It
 changes the compiled code one small thing at a time (a `<` becomes `<=`, a call is removed, a
 return becomes `null`) and reruns the tests that cover that line. A mutant no test fails on is a
-behaviour nobody checks. `main` is at **100 %** killed: keep it there. It's a local gate, not a CI
-job.
+behaviour nobody checks.
 
-## When
+It's an optional local development tool: not a CI job and not a required gate. Don't run it
+unasked as part of `/build`; a full run takes minutes.
 
-- Before opening a PR that touches `src/main/java`: run it, after `./mvnw -q package` is green.
-- When you add or change tests for existing code, to see they actually pin it down.
+## When it's useful
+
+- You're writing tests for existing code and want to see whether they actually pin it down.
+- You changed a tricky class and want to check its tests, narrowed to that class (below).
 
 ## How
 
@@ -18,12 +20,15 @@ Run from the worktree. Podman provides Docker on this team's machines:
 ```bash
 export DOCKER_HOST=unix://$(podman machine inspect --format '{{.ConnectionInfo.PodmanSocket.Path}}')
 export TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/run/podman/podman.sock
-./mvnw -B -Pmutation test-compile org.pitest:pitest-maven:mutationCoverage -Dpit.mutationThreshold=100
+./mvnw -B -Pmutation -Dmaven.build.cache.enabled=false test-compile \
+  org.pitest:pitest-maven:mutationCoverage -Dpit.targetClasses=no.scienta.cfp.WorkshopService
 ```
 
-- About 3-4 minutes from clean, much less on reruns (incremental history in `target/pit-history/`;
-  `./mvnw clean` or delete it for a full run). Safe to run in several worktrees at once: each PIT
-  minion gets its own Testcontainers Postgres on a random port.
+- Narrow it with `-Dpit.targetClasses` (globs allowed); without it every class is mutated, which
+  takes many minutes. PIT has no free incremental mode any more, so every run starts over.
+  `-Dpit.mutationThreshold=N` fails the run below N % killed.
+- Safe to run in several worktrees at once: each PIT minion gets its own Testcontainers Postgres
+  on a random port.
 - Results: the `>> Generated N mutations Killed M` line in the output, details in
   `target/pit-reports/index.html` and `mutations.xml` (status `SURVIVED` or `NO_COVERAGE`).
   `target/` is gitignored; never commit reports.
@@ -51,5 +56,5 @@ export TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/run/podman/podman.sock
 
 ## Report
 
-In the PR's local evidence, paste the `>> Generated … Killed …` line. If anything survived, list
-each mutant and why it's acceptable.
+If you ran it, you can paste the `>> Generated … Killed …` line in the PR. It's information, not a
+requirement.

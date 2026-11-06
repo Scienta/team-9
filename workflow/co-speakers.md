@@ -6,7 +6,7 @@ Requirements: released co-speakers v1 snapshot. These choices fill in unspecifie
 - PUT and DELETE return 200 and the full current Talk, including ordered `coSpeakerIds`; all existing Talk-returning routes include this field, with [] for no co-speakers.
 - Missing talk: 404, checked before speaker validation. Missing registered speaker: 404 for either operation. Non-numeric/out-of-range path integers: Spring binding returns 400; numeric IDs with no matching resource (including zero/negative) return 404.
 - PUT of the main speaker: 400. PUT of a third distinct co-speaker: 409. Duplicate PUT: 200 no-op, even at capacity; it must not reorder entries.
-- DELETE of a registered speaker not attached to the talk (including the main speaker): 200 no-op. The main speaker never changes.
+- DELETE of a registered speaker not attached to the talk (including the main speaker, and a repeated DELETE): 404 `speaker is not a co-speaker of this talk`, nothing changes. The main speaker never changes. (Was a 200 no-op until tick 51: the harness's co-speakers/check-1 rejected the repeated DELETE; lessons.md L3.)
 - Removing then re-adding appends at the end. No body is required for either mutation; request bodies have no effect.
 - Co-speaking does not affect main-speaker filters, own talk lists, submission quotas, or ratings. No restriction based on the co-speaker's submission count.
 
@@ -26,7 +26,12 @@ Requirements: released co-speakers v1 snapshot. These choices fill in unspecifie
   something is stuck. Without a limit, each waiting request holds one of only 5 pooled connections,
   and a single stuck lock could use them all up and stall the whole service. 2 s is far below
   client/platform timeouts and long enough to absorb normal queueing.
-- Timeout → Postgres SQLSTATE `55P03` (lock_not_available). Spring 5.3 translates it to
+- Worst case is ~2 × 2 s, not 2 s: Postgres applies `lock_timeout` to each lock wait separately.
+  With several waiters on one row, the first waits on the holder's transaction; the others first
+  queue for the row's tuple lock (≤ 2 s), then wait on the holder (≤ 2 s). Found when CI answered a
+  queued DELETE with 503 after 4,002 ms; the test bound was 4,000 ms and is now < 5,500 ms. Still
+  under the 5 s `/health` limit, though only just, if all 5 pooled connections are stuck waiting.
+- Timeout → Postgres SQLSTATE `55P03` (lock_not_available). Spring 5.3 (and Spring 7, with `src/main/resources/sql-error-codes.xml`) translates it to
   `CannotAcquireLockException`; a test checks this against real Postgres. The service doesn't rely on
   the exception type, though: it looks for SQLSTATE `55P03` in the cause chain and only then throws
   `LockTimeoutException`. Anything else (deadlock `40P01`, serialization failure `40001`, constraint
@@ -61,7 +66,8 @@ Requirements: released co-speakers v1 snapshot. These choices fill in unspecifie
   - Spring translates 55P03 → `CannotAcquireLockException`.
   - The SQLSTATE check accepts only 55P03.
   - A lock held on a separate JDBC connection makes a PUT and a DELETE both answer 503 +
-    `Retry-After: 1` with the standard error body after 2–4 s, and nothing changes. After rollback,
+    `Retry-After: 1` with the standard error body after ~2–4 s (bound < 5.5 s, see above), and
+    nothing changes. After rollback,
     the same PUT answers 200.
   - Forced overlap: two PUTs are confirmed waiting via `pg_stat_activity` (`wait_event_type = 'Lock'`).
     After the lock is released, both answer 200, in lock order, with no duplicates.

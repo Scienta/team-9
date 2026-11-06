@@ -124,6 +124,50 @@ class SpeakersTest {
         assertEquals(expected, send("GET", "/speakers/" + id).body());
     }
 
+    @Test
+    void registrationValidatesNameEmailAndBio() throws Exception {
+        String ok = "v-" + UUID.randomUUID() + "@example.com";
+        String[] bodies = {
+                "{\"email\":\"" + ok + "\"}",
+                "{\"name\":\" \",\"email\":\"" + ok + "\"}",
+                "{\"name\":\"Ada\"}",
+                "{\"name\":\"Ada\",\"email\":\"not-an-email\"}",
+                "{\"name\":\"Ada\",\"email\":\"" + ok + "\",\"bio\":\"" + "x".repeat(501) + "\"}",
+        };
+        for (String body : bodies) {
+            HttpResponse<String> res = http.send(request("POST", "/speakers", body), HttpResponse.BodyHandlers.ofString());
+            assertEquals(400, res.statusCode(), body + " -> " + res.body());
+        }
+        HttpResponse<String> res = http.send(request("POST", "/speakers",
+                "{\"name\":\"Ada\",\"email\":\"" + ok + "\",\"bio\":\"" + "x".repeat(500) + "\"}"),
+                HttpResponse.BodyHandlers.ofString());
+        assertEquals(201, res.statusCode(), res.body());
+    }
+
+    @Test
+    void unknownSpeakerIsNotFound() throws Exception {
+        assertEquals(404, send("GET", "/speakers/999999").statusCode());
+        assertEquals(404, http.send(request("PUT", "/speakers/999999", speaker("Ada", "ada-" + UUID.randomUUID() + "@example.com")),
+                HttpResponse.BodyHandlers.ofString()).statusCode());
+    }
+
+    @Test
+    void updateCannotTakeAnotherSpeakersEmailButMayRecaseItsOwn() throws Exception {
+        String taken = "taken-" + UUID.randomUUID() + "@example.com";
+        assertEquals(201, register("Taken", taken).statusCode());
+        String mine = "mine-" + UUID.randomUUID() + "@example.com";
+        String id = register("Mine", mine).body().replaceAll(".*\"id\":(\\d+).*", "$1");
+
+        HttpResponse<String> res = http.send(request("PUT", "/speakers/" + id, speaker("Mine", taken.toUpperCase())),
+                HttpResponse.BodyHandlers.ofString());
+        assertEquals(409, res.statusCode(), res.body());
+        res = http.send(request("PUT", "/speakers/" + id, speaker("Mine Renamed", mine.toUpperCase())),
+                HttpResponse.BodyHandlers.ofString());
+        assertEquals(200, res.statusCode(), res.body());
+        assertTrue(res.body().contains("\"name\":\"Mine Renamed\""), res.body());
+        assertTrue(send("GET", "/speakers/" + id).body().contains(mine.toUpperCase()));
+    }
+
     private HttpResponse<String> register(String name, String email) throws Exception {
         return http.send(request("POST", "/speakers", speaker(name, email)), HttpResponse.BodyHandlers.ofString());
     }

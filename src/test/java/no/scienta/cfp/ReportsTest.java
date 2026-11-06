@@ -8,16 +8,19 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 
-/** The committee's admin exports. Not public API, but the committee depends on them. Own database, fixed contents. */
+/**
+ * The committee's admin exports. Not public API, but the committee depends on them. Own database, fixed contents.
+ * Reads JSON with regexes rather than Jackson, like RatingsTest, so it doesn't depend on the Jackson major version.
+ */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class ReportsTest {
 
@@ -30,7 +33,6 @@ class ReportsTest {
     int port;
 
     private final HttpClient http = HttpClient.newHttpClient();
-    private final ObjectMapper json = new ObjectMapper();
 
     @Test
     void statsAndCsvDescribeTheTalks() throws Exception {
@@ -45,12 +47,12 @@ class ReportsTest {
 
         HttpResponse<String> statsRes = send("GET", "/admin/stats", null);
         assertEquals(200, statsRes.statusCode(), statsRes.body());
-        JsonNode stats = json.readTree(statsRes.body());
-        assertEquals(1, stats.get("speakers").asInt());
-        assertEquals(1, stats.get("speakersWithTalks").asInt());
-        assertEquals(2, stats.get("talks").asInt());
-        assertEquals(130 / 60.0, stats.get("totalHours").asDouble());
-        assertEquals(4.5, stats.get("averageRating").asDouble());
+        String stats = statsRes.body();
+        assertEquals("1", value(stats, "speakers"), stats);
+        assertEquals("1", value(stats, "speakersWithTalks"), stats);
+        assertEquals("2", value(stats, "talks"), stats);
+        assertEquals(130 / 60.0, Double.parseDouble(value(stats, "totalHours")), stats);
+        assertEquals("4.5", value(stats, "averageRating"), stats);
 
         HttpResponse<String> csv = send("GET", "/admin/talks.csv", null);
         assertEquals(200, csv.statusCode(), csv.body());
@@ -65,9 +67,16 @@ class ReportsTest {
                 lines[2]);
     }
 
-    private long id(HttpResponse<String> res) throws Exception {
+    private long id(HttpResponse<String> res) {
         assertEquals(201, res.statusCode(), res.body());
-        return json.readTree(res.body()).get("id").asLong();
+        return Long.parseLong(value(res.body(), "id"));
+    }
+
+    /** The first value of a field that is a number or null. */
+    private static String value(String json, String name) {
+        Matcher m = Pattern.compile("\"" + name + "\":(null|-?[\\d.]+)").matcher(json);
+        assertTrue(m.find(), name + " in " + json);
+        return m.group(1);
     }
 
     private HttpResponse<String> send(String method, String path, String body) throws Exception {

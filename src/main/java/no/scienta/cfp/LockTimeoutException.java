@@ -19,7 +19,7 @@ public class LockTimeoutException extends ResponseStatusException {
     }
 
     @Override
-    public HttpHeaders getResponseHeaders() {
+    public HttpHeaders getHeaders() {
         HttpHeaders headers = new HttpHeaders();
         headers.set(HttpHeaders.RETRY_AFTER, "1");
         return headers;

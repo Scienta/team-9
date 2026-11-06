@@ -34,9 +34,20 @@ folder has the process, templates, checklists, lessons and scripts.
 `/drive` runs one step of that flow on its own (`/loop /drive` keeps it going). It stops only where
 a person is needed: the PR review and the claim.
 
+**The shared board.** Every agent, on everyone's machine, records each step on the orphan branch
+`work` as it happens, through [`bin/work`](bin/work): `start <slug>` before touching a feature (it's
+the lock: only one agent can win it), then a log line or state change for the team spec, gates,
+reviews, PR, blocks, verify and claim. `bin/next` reads it, so a feature someone has taken is never
+offered as new. `work` never merges into `main`. Rules: [`.claude/rules/work-branch.md`](../.claude/rules/work-branch.md).
+
+**Watcher.** [`watch_specs.py`](watch_specs.py) ([how](automation.md)) polls the harness once a
+minute and tells you when a spec is released or changed. It doesn't act on it.
+
 | Step | Skill | Script | Writes |
 |---|---|---|---|
+| Notice a release | | [`watch_specs.py`](watch_specs.py) | nothing (prints NEW/CHANGED) |
 | Find work | [`/next`](../.claude/skills/next/SKILL.md) | [`bin/next`](bin/next) | `specs/<slug>.md` |
+| Take it, report progress | every skill | [`bin/work`](bin/work) | the `work` branch |
 | Team spec | [`/spec`](../.claude/skills/spec/SKILL.md) | | `workflow/specs/<slug>.md` |
 | Build | [`/build`](../.claude/skills/build/SKILL.md) | | code, tests, `examples/<slug>.hurl`, PR |
 | Review | [3 reviewers](../.claude/agents/) + a person | [`bin/check-decisions`](bin/check-decisions) (CI) | PR comments |
@@ -80,4 +91,6 @@ step in a skill. The change rides in the same PR as the fix, so a person reviews
 - [`checklists/spec-questions.md`](checklists/spec-questions.md): gaps to look for in every request, and our conventions for answering them.
 - [`checklists/review.md`](checklists/review.md): what the reviewers (agents and people) check.
 - [`lessons.md`](lessons.md): the learning log.
-- [`bin/`](bin/): `harness` (API client), `next`, `verify`, `check-decisions`, `hurl` (Docker fallback).
+- [`bin/`](bin/): `harness` (API client), `next`, `work` (shared board), `verify`, `check-decisions`, `hurl` (Docker fallback),
+  `diff-upgrade` (sends one request corpus to an old and a new build and lists every difference: for upgrades).
+- [`watch_specs.py`](watch_specs.py), [`automation.md`](automation.md): the release watcher; `test_*.py`: tests for it and `bin/work`.

@@ -11,8 +11,13 @@ most valuable thing, does it fully, reports, and ends. The person's only jobs ar
 
 ## Each iteration
 
-1. `workflow/bin/next`, then take the **first** of these that applies, do it, and stop:
+1. `workflow/bin/next` and `workflow/bin/work show`, then take the **first** of these that applies,
+   do it, and stop. Record every step on the board as it happens (`.claude/rules/work-branch.md`);
+   run with `WORK_AGENT=drive`:
 
+   0. **`bin/next` says the SERVICE IS DOWN** (every claimed feature is bleeding): find why from
+      `/health`, `gh run list --branch main --limit 3` and `.github/fagdag/logs.sh --tail 200`, then
+      notify a person at once with what you found. A fix goes on a branch with an `URGENT` PR, as below.
    1. **A claimed feature is FAULTY** (it's costing points): `/retro <slug>` with the check's
       transcript. The fix PR's title starts with `URGENT`.
    2. **SPEC CHANGED** for a feature we built or are building: update the team spec and tests on a
@@ -25,7 +30,8 @@ most valuable thing, does it fully, reports, and ends. The person's only jobs ar
    5. **A feature is claimed but its row in the `REVIEW.md` claim log (section 3) doesn't say
       `claimed`**: `/verify <slug>` (it reads harness feedback), the short post-claim `/retro`, and
       update the row in the same PR.
-   6. **A new feature nobody is on**: `/spec <slug>`, then `/build <slug>`, ending with a PR.
+   6. **A new feature nobody is on**: `/spec <slug>` (which starts with `workflow/bin/work start <slug>`;
+      if that exits 3, someone took it first: pick the next one), then `/build <slug>`, ending with a PR.
    7. Nothing: report "idle" with the `bin/next` table.
 
 2. **Report** in a few lines: what you did, links to PRs, what's waiting on a person (PRs to
@@ -42,7 +48,10 @@ most valuable thing, does it fully, reports, and ends. The person's only jobs ar
 
 - Run the loop in its own git worktree or clone (`git worktree add ../team-9-drive origin/main`),
   never in a checkout a person is working in: it switches branches.
-- One feature at a time per loop. Before starting one, check `origin/feat/<slug>` doesn't exist.
+- One feature at a time per loop. Before starting one, `workflow/bin/work start <slug>` must succeed
+  (it's the lock) and `origin/feat/<slug>` must not exist.
 - Never push to `main`, merge, or claim. Never print the harness token.
-- If the same step fails twice in a row, stop the loop and tell the person what's stuck, rather
-  than retrying forever.
+- If `bin/next` prints `STOP: local main has … commit(s)` (`workflow/bin/check-main`), stop the
+  loop and tell the person: unreviewed work is one push away from deploying (lessons.md L4).
+- If the same step fails twice in a row, `workflow/bin/work state <slug> blocked "<what's stuck>"`,
+  stop the loop and tell the person, rather than retrying forever.
