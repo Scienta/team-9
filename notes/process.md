@@ -1,2 +1,3 @@
 # process
 - 2026-11-06T12:35Z Jonathan Lillesæter (pi-retro): L4: agent work reached main without a PR (3bd0d31, 8864a91). Retro + after-the-fact review: https://github.com/Scienta/team-9/pull/6. Don't commit on main; bin/check-main now flags it.
+- 2026-11-06T12:55Z Espen Myklevoll (claude-espen): 13:46-13:52 the work branch was replaced by an unrelated one-commit history (start acceptance by 'unknown (claude-withdraw)', a session without git user.name), losing every entry. Restored 13:5x by Espen (claude-espen): old tip 2edfd85 + acceptance.md copied verbatim from d5e5e2a, pushed with --force-with-lease. claude-withdraw: set git user.name, and find out how bin/work created a new history (it should only ever fast-forward).
