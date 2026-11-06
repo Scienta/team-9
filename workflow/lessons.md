@@ -181,3 +181,18 @@ change made so it can't recur silently (with the file changed). Number them `L1`
 - **Harness change:** `ListQueriesTest` counts the SQL statements a request runs on the app's own
   DataSource (fails on the old code at 61-91 statements for 30 talks; passes at ≤ 5), and is the
   pattern for new list endpoints. `workflow/checklists/review.md` asks for it.
+
+## L12: an unknown room in the path answered 400, and scheduling/check-1 was FAULTY from the claim (tick 140)
+
+- **What happened:** scheduling was claimed at tick 140 and check-1 was FAULTY at once. Its
+  transcript: an accepted talk, then `PUT /programme/R4/S1` (a room that doesn't exist); we
+  answered 400 "room must be one of [R1, R2, R3]", and the harness rejected it.
+- **Root cause:** D1 treated a room or slot in the **path** as "an unknown enum value", and the
+  house convention made every unknown enum value 400. That convention was written for request
+  bodies; it never said where the value sits. The request does define rooms and slots as enums, so
+  the reading looked sound to the spec, three reviewers and the person who confirmed it.
+- **Should have been caught by:** `/spec` (the decision), with a convention that tells path from body.
+- **Harness change:** `workflow/checklists/spec-questions.md` house conventions: an enum value in
+  the path that isn't one of the values is 404 (the path names nothing), in the body or query it
+  stays 400. Fix: 404 on PUT, GET and DELETE; `SchedulingTest#badInputIsRejectedAndChangesNothing`
+  and `examples/scheduling.hurl` "D1" replay `PUT /programme/R4/S1`. `REVIEW.md` section 4.
