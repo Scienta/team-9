@@ -3,7 +3,7 @@
 Feature request: [`specs/submission-cap-cr.md`](../../specs/submission-cap-cr.md), version 1 (V: 2).
 Changes: [Talk submissions](../../specs/talks.md) (the 3-talk limit) and
 [Co-speakers](../../specs/co-speakers.md) (replaces "co-speaking doesn't count").
-Status: draft
+Status: in-review
 
 ## Rules
 
