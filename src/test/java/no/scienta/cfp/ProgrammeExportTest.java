@@ -210,6 +210,28 @@ class ProgrammeExportTest {
         assertTrue(get("/programme", null).body().contains("\"speakers\":[\"Hopper, Grace\",\"Ada \\\"Countess\\\" Lovelace\"]"));
     }
 
+    // R4: a co-speaker removed and added again goes last (cases from team 7's green suite)
+    @Test
+    void coSpeakerAddedAgainGoesLast() throws Exception {
+        long ada = speaker("Ada");
+        long alan = speaker("Alan");
+        long talk = accepted(speaker("Grace"), "Again", "PRESENTATION");
+        coSpeaker(talk, ada);
+        coSpeaker(talk, alan);
+        schedule("R1", "S1", talk);
+        assertEquals(200, send("DELETE", "/talks/" + talk + "/co-speakers/" + ada, null, null).statusCode());
+        coSpeaker(talk, ada);
+        assertTrue(get("/programme", null).body().contains("\"speakers\":[\"Grace\",\"Alan\",\"Ada\"]"));
+        assertTrue(get("/programme.csv", null).body().endsWith(",Grace; Alan; Ada\n"));
+    }
+
+    // API: a trailing slash is the same JSON list, as on every other endpoint (CompatibilityConfig)
+    @Test
+    void trailingSlashIsTheSame() throws Exception {
+        schedule("R2", "S3", accepted(speaker("Slash"), "Trailing", "PRESENTATION"));
+        assertEquals(get("/programme", null).body(), get("/programme/", null).body());
+    }
+
     // D6: query parameters are ignored
     @Test
     void queryParametersAreIgnored() throws Exception {
