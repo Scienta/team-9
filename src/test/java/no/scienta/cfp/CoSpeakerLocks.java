@@ -66,7 +66,7 @@ final class CoSpeakerLocks {
      */
     static void assertPoolDefaults(DataSource dataSource, String expectedIsolation) throws Exception {
         int poolSize = ((HikariDataSource) dataSource).getMaximumPoolSize();
-        assertEquals(5, poolSize, "pool size as configured in application.properties");
+        assertEquals(10, poolSize, "pool size as configured in application.properties");
         int borrowers = poolSize + 3;
         ExecutorService pool = Executors.newFixedThreadPool(borrowers);
         try {

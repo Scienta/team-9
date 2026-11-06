@@ -65,7 +65,7 @@ class RuntimeMetricsTest {
     void reportsWhatTheJvmIsGiven() {
         Map<String, Object> facts = metrics.staticFacts();
         assertEquals(Runtime.getRuntime().availableProcessors(), facts.get("availableProcessors"));
-        assertEquals(5, facts.get("poolMax"));
+        assertEquals(10, facts.get("poolMax"));
         assertNotNull(facts.get("gc"));
         assertTrue(facts.containsKey("cpu.max"));
     }
