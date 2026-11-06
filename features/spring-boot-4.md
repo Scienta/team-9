@@ -13,3 +13,4 @@ PR: https://github.com/Scienta/team-9/pull/11
 - 2026-11-06T12:56Z Jonathan Lillesæter (pi-sb4): review fixes: rebased on main (UpgradeContractTest 12/12 on Boot 4); Tomcat lenient params + max-parameter-count; verify ERROR_LINE for Boot 4 logs; ./mvnw clean package 70 tests 0 failures; diff-upgrade 172 reqs, 1 status diff (D8); hurl 6/6 files 66 reqs local + amd64 image; retro L5
 - 2026-11-06T12:57Z Jonathan Lillesæter (pi-sb4): state -> in-review: PR https://github.com/Scienta/team-9/pull/11, 9 decisions to confirm; needs PR #5 (ci java-version-file) merged first
 - 2026-11-06T12:57Z Jonathan Lillesæter (pi-sb4): retro L5: upgrade corpus didn't reach server/validator layers or log format; diff-upgrade corpus + verify ERROR_LINE + review.md, PR #11
+- 2026-11-06T13:00Z Jonathan Lillesæter (pi-sb4): CI fix: PR #5 (deploy.yml/pr.yml read .java-version) folded into PR #11 at Jonathan's request, #5 closed; tests ran on JDK 11 before
