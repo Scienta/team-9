@@ -15,7 +15,7 @@ folder has the process, templates, checklists, lessons and scripts.
           │  edge cases. Every gap is a DECISION with a suggested default, marked UNCONFIRMED.
           │
    /build ─┤  branch feat/<slug>, tests first (JUnit + examples/<slug>.hurl), then code,
-          │  ./mvnw package, Hurl against a local app,
+          │  its own test class and Hurl file locally (full suite and gates run on CI),
           │  3 reviewer subagents in parallel → fix findings → each finding becomes a lesson,
           │  PR with the UNCONFIRMED decisions listed for the reviewer
           │
@@ -72,7 +72,7 @@ Something that got further than it should have is an error. Each one gets a `/re
 |---|---|
 | A reviewer subagent finds a bug | `/build` (tests didn't cover it) |
 | A person's PR review finds a bug or overrides a decision | `/spec` or `/build` |
-| CI fails on a PR | `/build` (didn't run the gate locally) |
+| CI fails on a PR because of a bug (not just a missed step) | `/build` (tests didn't cover it) |
 | `/verify` fails after deploy | `/build` or the reviewers |
 | A harness check goes FAULTY, or a base check regresses | every phase before it |
 | A deploy fails or the service goes down | `/build` |

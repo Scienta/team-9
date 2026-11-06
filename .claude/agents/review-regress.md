@@ -23,7 +23,8 @@ Check:
 - `/health`, port 8080, the `Dockerfile`, `GIT_SHA` and the `PG*` variables are still per contract.
 - Nothing secret is in the diff.
 
-Run `./mvnw -q package` once and report any failure.
+Don't run the full build or test suite: CI does that on the PR. If you suspect a specific test
+breaks, run just that class (`./mvnw -q test -Dtest=<Class>`) and report the failure.
 
 Report findings only, most severe first, each as:
 `[severity: bug|gap|nit] <file>:<line> <what's wrong> — <which spec rule or contract item breaks> — <a request that shows it>`.

@@ -1,6 +1,6 @@
 ---
 name: build
-description: Implement a feature from its team spec on branch feat/<slug> - tests first, code, local gates, three parallel reviewer subagents, fixes, lessons, then a PR for a person. Use after /spec.
+description: Implement a feature from its team spec on branch feat/<slug> - tests first, code, the feature's own checks, three parallel reviewer subagents, fixes, lessons, then a PR for a person. Use after /spec.
 ---
 
 # /build <slug>
@@ -33,18 +33,20 @@ Keep it in the feature's own files where possible (controller, DAO). Schema chan
 `src/main/resources/schema.sql`, additive and idempotent. Use row locks or conditional writes for
 anything that can race.
 
-While writing it, run only your own test class (`./mvnw -q test -Dtest=<YourTest>`); the full run is
-for the gate below (`.claude/rules/build.md`).
+While writing it, run only your own test class (`./mvnw -q test -Dtest=<YourTest>`)
+(`.claude/rules/build.md`).
 
-## 3. Local gates
+## 3. The feature's own checks
 
-All must pass, and you must have seen them pass:
-- `./mvnw -q package` (all tests, not just yours). A build-cache hit (about 2 s, no tests run;
-  without `-q` it prints `Found cached build`) counts: the same inputs passed before. Never pass `-Dtest=` or `-DskipTests` here.
-- App running locally (`docker compose up -d`, `java -jar target/cfp.jar &`), then
-  `HURL=workflow/bin/hurl examples/run.sh` (every Hurl file, not just yours). Stop the app after.
-- `workflow/bin/check-hurl-statuses <slug>`: every status in the team spec's API table has a Hurl
-  request (CI runs it too; lessons.md L5).
+Run only what proves this feature, and see it pass:
+- Your own test class: `./mvnw -q test -Dtest=<YourTest>`.
+- Your own Hurl file against a local app: `./mvnw -q package -DskipTests`, `docker compose up -d`,
+  `java -jar target/cfp.jar &`, then `workflow/bin/hurl --test --variable base_url=http://localhost:8080 examples/<slug>.hurl`. Stop the app after.
+
+**Don't run the full suite locally** (`./mvnw package` with all tests, every Hurl file,
+`check-hurl-statuses`, `check-decisions`): the PR's CI runs those (`.github/workflows/pr.yml`), and
+waiting for them here only delays the push. Push and let CI gate it; a red CI is handled like a
+review comment (`/drive` step 3).
 
 ## 4. Three reviewers, in parallel
 
@@ -52,7 +54,7 @@ Commit, then launch the three reviewer subagents **in one message** so they run 
 given the slug: `review-spec`, `review-edge`, `review-regress` (`.claude/agents/`).
 
 For each finding: decide whether it's real (reproduce it with a test where you can). Fix the real
-ones test-first, and say in the PR which you rejected and why. Rerun the local gates.
+ones test-first, and say in the PR which you rejected and why. Rerun the checks for what you changed.
 
 **Every real finding is an error a reviewer caught: run `/retro` for it** (one `/retro` can cover
 several findings with the same root cause). Its harness change goes in this same branch.
@@ -65,7 +67,8 @@ Push and open a PR with `gh pr create`, titled `feat(<slug>): <feature name>`. T
 - **Rules → tests:** a table of each rule and decision and the test(s) that prove it.
 - **Review findings:** each reviewer's findings and what was done (fixed with test X, or rejected
   because Y), and the lessons added.
-- **Local evidence:** the test and Hurl summary lines you saw.
+- **Local evidence:** the summary lines of your own test class and Hurl file. The full suite's
+  evidence is the PR's CI run.
 
 Update the team spec's `Status:` to `in-review`, then `workflow/bin/work state <slug> in-review "PR <url>, <n> decisions to confirm"`.
 Tell the user the PR URL and the decisions to confirm.
