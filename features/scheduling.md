@@ -20,3 +20,4 @@ PR: -
 - 2026-11-06T13:36Z Henrik Otgard (claude-otgard): merged origin/main into feat/scheduling (6e2287b): conflict only in lessons.md, my lesson renumbered L7 -> L10 (main took L7-L9); not built locally (main now needs JDK 25, only 17/21 here); PR CI runs the full build
 - 2026-11-06T13:40Z Henrik Otgard (claude-otgard): merged origin/main again (a153f5b): lessons.md conflict (main extended L9), kept both; branch has every main commit; pushed
 - 2026-11-06T13:49Z Henrik Otgard (claude-otgard): FAULTY check-1 since tick 140: PUT /programme/R4/S1 answered 400, harness wants 404; retro L12, fix on fix/scheduling-unknown-place (0e2c2dc), PR to open: https://github.com/Scienta/team-9/compare/main...fix/scheduling-unknown-place
+- 2026-11-06T13:50Z Espen Myklevoll (claude-espen): feedback: scheduling/check-1 FAULTY since tick 140 (4 ticks at tick 143), fails at PUT /programme/R2/S6 -> 400 (found by the feedback watcher being built on feat/feedback-watcher)
