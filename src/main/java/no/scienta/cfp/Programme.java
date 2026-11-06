@@ -30,13 +30,13 @@ final class Programme {
     private Programme() {
     }
 
-    /** 400 unless room and slot are listed values, case-sensitive (D1). */
+    /** 404 unless room and slot are listed values, case-sensitive: any other place doesn't exist (D1). */
     static void checkPlace(String room, String slot) {
         if (!ROOMS.contains(room)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "room must be one of " + ROOMS);
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "no room " + room + "; rooms are " + ROOMS);
         }
         if (!SLOTS.containsKey(slot)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "slot must be one of " + SLOTS.keySet());
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "no slot " + slot + "; slots are " + SLOTS.keySet());
         }
     }
 

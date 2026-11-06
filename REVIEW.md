@@ -91,6 +91,13 @@ both conditions are one rule in the request. Three reviewer agents and a person'
 D2. The house convention now separates "nothing with that id" (404) from "exists but not eligible"
 (409) ([lessons.md](workflow/lessons.md) L9).
 
+**scheduling/check-1, FAULTY from the claim at tick 140.** The harness put an accepted talk in
+`/programme/R4/S1`, a room that doesn't exist; we answered 400 because our decision D1 called an
+unknown room in the path "an unknown enum value", which the house convention made 400. The harness
+wants 404: a path that names nothing. Three reviewer agents and a person confirmed D1. The house
+convention now says an enum value in the path is 404, one in the body is 400; the fix answers 404
+on every verb and the Hurl file replays the request ([lessons.md](workflow/lessons.md) L12).
+
 ## 5. Reusable artifacts
 
 - [`workflow/watch_feedback.py`](workflow/watch_feedback.py): watches a scoring/monitoring feed and

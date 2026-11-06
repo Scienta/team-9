@@ -39,7 +39,11 @@ from (`lessons.md#L<n>`).
 
 Our default answers, so every feature behaves the same way. A DECISION that follows one says so.
 
-- **400** for a malformed request: missing, null, blank, wrong type, unknown enum value (case-sensitive).
+- **400** for a malformed request: missing, null, blank, wrong type, unknown enum value (case-sensitive)
+  **in the body or query**.
+- **404** for an enum value **in the path** that isn't one of the values (`/programme/R4/S1`): the
+  path names something that doesn't exist, the same as an unknown id. The harness checks this:
+  400 failed scheduling/check-1 (lessons.md L12).
 - **Emails** need a dot in the domain on top of `@Email` (`a@b` is 400), and compare with `lower()`.
   Set by a person in review of workshop-registration D1; speaker registration predates it (lessons.md L6).
 - **404** for an id in the **path** that doesn't exist. Only then: if a resource with that id

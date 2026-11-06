@@ -216,10 +216,11 @@ class SchedulingTest {
     @Test
     void badInputIsRejectedAndChangesNothing() throws Exception {
         long talk = accepted("PRESENTATION");
+        // D1: a room or slot that doesn't exist is 404 on every verb (scheduling/check-1, lessons.md L12).
         for (String place : new String[] {"R4/S1", "r1/S1", "R0/S1", "R1/S0", "R1/S6", "R1/s1", "R1/S", "x/y"}) {
-            assertEquals(400, send("PUT", "/programme/" + place, "{\"talkId\":" + talk + "}").statusCode(), place);
-            assertEquals(400, send("GET", "/programme/" + place, null).statusCode(), place);
-            assertEquals(400, send("DELETE", "/programme/" + place, null).statusCode(), place);
+            assertEquals(404, send("PUT", "/programme/" + place, "{\"talkId\":" + talk + "}").statusCode(), place);
+            assertEquals(404, send("GET", "/programme/" + place, null).statusCode(), place);
+            assertEquals(404, send("DELETE", "/programme/" + place, null).statusCode(), place);
         }
         for (String body : new String[] {null, "", "not json", "{}", "[]", "{\"talkId\":null}", "{\"talkId\":\"" + talk + "\"}",
                 "{\"talkId\":" + talk + ".5}", "{\"talkId\":" + talk + ".0}", "{\"talkId\":true}", "{\"talkId\":0}",
@@ -230,8 +231,9 @@ class SchedulingTest {
         HttpResponse<String> unknown = send("PUT", "/programme/R1/S1", "{\"talkId\":999999}");
         assertEquals(404, unknown.statusCode(), unknown.body());
         assertEquals(404, send("PUT", "/programme/R1/S1", "{\"talkId\":9223372036854775807}").statusCode());
-        // Bad place before unknown talk (D9).
-        assertEquals(400, send("PUT", "/programme/R4/S1", "{\"talkId\":999999}").statusCode());
+        // A place that doesn't exist before the talkId's value and the talk (D9).
+        assertEquals(404, send("PUT", "/programme/R4/S1", "{\"talkId\":\"x\"}").statusCode());
+        assertEquals(404, send("PUT", "/programme/R4/S1", "{\"talkId\":999999}").statusCode());
         assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM programme", Integer.class));
 
         // Extra fields are ignored (D2).
