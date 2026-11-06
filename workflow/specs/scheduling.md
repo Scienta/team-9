@@ -32,16 +32,14 @@ Status: in-review
 | Method and path | Status | When |
 |---|---|---|
 | `PUT /programme/{room}/{slot}` | 200 | the talk is there; body is the `Entry`. Also when this exact talk is already in this exact place (D6) |
-| | 400 | `{room}` or `{slot}` isn't one of the values, case-sensitive (D1); body missing or not JSON; `talkId` missing, null, not a whole number (string, decimal, boolean) or < 1 (D2) |
-| | 404 | no talk with that `talkId` (D3) |
+| | 400 | body missing or not JSON; `talkId` missing, null, not a whole number (string, decimal, boolean) or < 1 (D2) |
+| | 404 | `{room}` or `{slot}` isn't one of the values, case-sensitive (D1); no talk with that `talkId` (D3) |
 | | 409 | the talk isn't `ACCEPTED` (D4); a workshop outside `S4` (D5); another talk is in this place (R5); the talk is already somewhere else (R6, D6); one of its speakers already speaks in this slot (R7) |
 | | 503 | the slot stayed locked for 2 s (`Retry-After: 1`, as co-speakers). Nothing changes. |
 | `GET /programme/{room}/{slot}` | 200 | the `Entry` in this place |
-| | 400 | bad `{room}` or `{slot}` (D1) |
-| | 404 | nothing in this place (D7) |
+| | 404 | `{room}` or `{slot}` isn't one of the values (D1); nothing in this place (D7) |
 | `DELETE /programme/{room}/{slot}` | 204 | the talk was taken out; no body (D8) |
-| | 400 | bad `{room}` or `{slot}` (D1) |
-| | 404 | nothing in this place, also when it was just taken out (D8, lessons.md L3) |
+| | 404 | `{room}` or `{slot}` isn't one of the values (D1); nothing in this place, also when it was just taken out (D8, lessons.md L3) |
 
 Framework defaults, as on every other endpoint: 415 for a `Content-Type` that isn't JSON, 405 for
 any other method on the path.
@@ -52,9 +50,10 @@ No existing response changes: `Talk` gets no new field.
 
 ## Decisions
 
-- **D1** A room or slot that isn't one of the listed values (`R4`, `r1`, `S0`, `S6`) → 400 on every
-  verb: the request defines them as enums, so it's malformed input (house convention: unknown enum
-  value, case-sensitive). `CONFIRMED by Henrik Otgard`
+- **D1** A room or slot that isn't one of the listed values (`R4`, `r1`, `S0`, `S6`) → 404 on every
+  verb: the path names a place that doesn't exist (house convention: 404 for a path that names
+  nothing). Was 400 ("unknown enum value"), and scheduling/check-1 went FAULTY on `PUT
+  /programme/R4/S1` at the claim (lessons.md L12). `CONFIRMED by Henrik Otgard`
 - **D2** `talkId` must be a JSON whole number ≥ 1. A string (`"5"`), decimal (`5.5` or `5.0`),
   boolean, null or missing `talkId` → 400 (house convention: wrong type; lessons.md L5 on Jackson
   coercion). Extra fields are ignored. `CONFIRMED by Henrik Otgard`
@@ -74,7 +73,8 @@ No existing response changes: `Talk` gets no new field.
 - **D8** `DELETE` answers 204 with no body: the request gives `DELETE` no response schema, unlike
   `PUT` and `GET`. An empty place, including a second `DELETE`, → 404 (house convention, lessons.md
   L3). `CONFIRMED by Henrik Otgard`
-- **D9** Which checks run first when several fail → path (400), body (400), talk exists (404),
+- **D9** Which checks run first when several fail → body not JSON (400, Spring parses it first),
+  place exists (404), `talkId` value (400), talk exists (404),
   then the D6 repeat (200), status (409), fit (409), place free (409), talk not elsewhere (409),
   speakers (409). Every failure changes nothing. Spring answers 415 for a non-JSON `Content-Type`
   before any of these. `CONFIRMED by Henrik Otgard`

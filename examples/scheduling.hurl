@@ -171,16 +171,17 @@ HTTP 200
 jsonpath "$.start" == "15:45"
 jsonpath "$.end" == "16:45"
 
-# D1: rooms and slots are only the listed values, case-sensitive
+# D1: a room or slot that isn't one of the listed values (case-sensitive) doesn't exist: 404.
+# The PUT to R4 is the request scheduling/check-1 failed on (we answered 400; lessons.md L12).
 PUT {{base_url}}/programme/R4/S1
 { "talkId": {{ada_talk}} }
-HTTP 400
+HTTP 404
 
 GET {{base_url}}/programme/R1/S6
-HTTP 400
+HTTP 404
 
 DELETE {{base_url}}/programme/r1/S1
-HTTP 400
+HTTP 404
 
 # D2: talkId must be a whole number
 PUT {{base_url}}/programme/R3/S2
