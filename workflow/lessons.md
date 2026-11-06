@@ -62,3 +62,33 @@ change made so it can't recur silently (with the file changed). Number them `L1`
   `/drive` stops on it. `.claude/rules/worktrees.md` now covers every change, including workflow
   and agent config, and forbids committing on `main`. `checklists/review.md` checks the PR's commit
   list. Still needed from a person: branch protection on `main` (required PR and checks).
+
+## L5: three reviewers caught a 500, a coerced type and untested statuses in workshop-registration (tick 75)
+
+- **What happened:** the first build of workshop-registration passed every local gate. The three
+  reviewer agents then found: a `name` with a NUL character answered **500** (Postgres refuses zero
+  bytes at the insert); `"name": 123` was stored as `"123"` with a 201 instead of a 400; the 503
+  lock-timeout status had no test; and the Hurl file, which `bin/verify` runs before a claim,
+  covered 4 of the API table's 400 cases. A deliberate break also showed the rush test caught a
+  missing lock in only 2 runs of 3.
+- **Root cause:** the spec checklist's "malformed input" item named "wrong type" but not the two
+  cases Spring's defaults let through, so neither the spec nor the tests asked; and "a Hurl request
+  per error status" was a sentence to remember, not a check.
+- **Should have been caught by:** `/spec` (the inputs) and `/build` step 3 (the coverage).
+- **Harness change:** `workflow/checklists/spec-questions.md` item 2 names both cases and their fix
+  (`StrictStringDeserializer`, `@Pattern`); `workflow/bin/check-hurl-statuses` fails when a status in
+  the team spec's API table has no Hurl request (shown failing on a Hurl file without its 404s), run
+  by `/build` step 3 and by CI's `decisions` job; `workflow/checklists/review.md` points at it.
+  Concurrency tests that guard a lock now run several rounds (`rushNeverExceedsTwentySeats`).
+
+## L6: a person overrode the email decision in workshop-registration review (tick 90)
+
+- **What happened:** D1 answered "validate emails exactly as speaker registration does". In review
+  Espen overrode it: an attendee email needs a dot in its domain, so `a@b` is 400. The other ten
+  decisions were confirmed as written.
+- **Root cause:** `/spec` copied the nearest existing behaviour without asking whether that
+  behaviour was what we wanted; `@Email` alone accepts `a@b`.
+- **Should have been caught by:** `/spec` (the decision).
+- **Harness change:** a house convention for emails in `workflow/checklists/spec-questions.md`, so
+  the next feature with an email defaults to the stricter rule.
+

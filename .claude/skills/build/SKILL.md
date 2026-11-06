@@ -35,6 +35,8 @@ All must pass, and you must have seen them pass:
 - `./mvnw -q package` (all tests, not just yours).
 - App running locally (`docker compose up -d`, `java -jar target/cfp.jar &`), then
   `HURL=workflow/bin/hurl examples/run.sh` (every Hurl file, not just yours). Stop the app after.
+- `workflow/bin/check-hurl-statuses <slug>`: every status in the team spec's API table has a Hurl
+  request (CI runs it too; lessons.md L5).
 
 ## 4. Three reviewers, in parallel
 

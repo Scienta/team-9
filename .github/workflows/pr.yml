@@ -53,3 +53,10 @@ jobs:
       - uses: actions/checkout@v5
       - name: Every decision confirmed by a person
         run: workflow/bin/check-decisions
+      - name: Every API status has a Hurl request (workflow/lessons.md L5)
+        run: |
+          for spec in workflow/specs/*.md; do
+            [ -e "$spec" ] || continue
+            slug="$(basename "$spec" .md)"
+            if [ -f "examples/$slug.hurl" ]; then workflow/bin/check-hurl-statuses "$slug"; fi
+          done

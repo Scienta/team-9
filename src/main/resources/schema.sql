@@ -56,3 +56,14 @@ CREATE TABLE IF NOT EXISTS talk_co_speaker (
     added_order BIGSERIAL NOT NULL,
     PRIMARY KEY (talk_id, speaker_id)
 );
+
+-- Workshop registrations (workflow/specs/workshop-registration.md). One per email per workshop,
+-- whatever the letter case; ordered by id, which is registration order.
+CREATE TABLE IF NOT EXISTS workshop_registration (
+    id            SERIAL PRIMARY KEY,
+    talk_id       INTEGER NOT NULL REFERENCES talk(id),
+    name          TEXT NOT NULL,
+    email         TEXT NOT NULL,                    -- as the attendee typed it
+    registered_at BIGINT NOT NULL                   -- epoch millis (UTC)
+);
+CREATE UNIQUE INDEX IF NOT EXISTS ux_workshop_registration_email ON workshop_registration (talk_id, lower(email));

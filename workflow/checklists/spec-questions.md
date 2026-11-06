@@ -8,7 +8,10 @@ from (`lessons.md#L<n>`).
 
 1. **Unknown ids.** Each id in the path or body that doesn't exist: which status? (talk, speaker, ...)
 2. **Malformed input.** Missing body, missing field, `null`, wrong type, empty or blank string,
-   wrong case for an enum, extra fields, non-numeric path id.
+   wrong case for an enum, extra fields, non-numeric path id. Two that pass Spring's defaults
+   silently (lessons.md L5): a **number or boolean where a string is expected** (Jackson turns `123`
+   into `"123"`: use `StrictStringDeserializer` on the field) and a **NUL character** in a string
+   (Postgres refuses it at the insert, a 500: reject it with `@Pattern(regexp = "[^\\x00]*")`).
 3. **Limits.** Every "at most N" / "at least N": what happens at N, at N+1, and does it hold under
    concurrent requests?
 4. **Idempotency.** Doing the same thing twice: a no-op returning 200, or an error? Answer it
@@ -33,6 +36,8 @@ from (`lessons.md#L<n>`).
 Our default answers, so every feature behaves the same way. A DECISION that follows one says so.
 
 - **400** for a malformed request: missing, null, blank, wrong type, unknown enum value (case-sensitive).
+- **Emails** need a dot in the domain on top of `@Email` (`a@b` is 400), and compare with `lower()`.
+  Set by a person in review of workshop-registration D1; speaker registration predates it (lessons.md L6).
 - **404** for an id in the **path** that doesn't exist.
 - **400** for an id in the **body** that doesn't exist (as `POST /talks` does with `speakerId`),
   unless the request makes it the subject of the action. Write down which applies.
