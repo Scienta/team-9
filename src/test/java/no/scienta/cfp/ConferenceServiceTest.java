@@ -15,6 +15,8 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -47,7 +49,6 @@ class ConferenceServiceTest {
         ratingDao = mock(RatingDao.class);
         notifications = mock(NotificationService.class);
         service = new ConferenceService(speakerDao, talkDao, ratingDao, notifications);
-        when(ratingDao.stats(anyLong())).thenReturn(stats(0, 0));
         when(speakerDao.findById(anyLong())).thenReturn(null); // Mockito's default for a Map is an empty one
     }
 
@@ -242,14 +243,6 @@ class ConferenceServiceTest {
         assertEquals(Arrays.asList(2L, 5L, 4L, 6L, 1L, 7L, 3L), ids(service.listTalks("rating", null)));
     }
 
-    @Test
-    void averageIsRoundedToOneDecimalHalfUp() {
-        givenTalks(rated(1, 17, 4)); // 4, 4, 4, 5 -> 4.25 -> 4.3
-        TalkDto t = service.listTalks(null, null).get(0);
-        assertEquals(4.3, t.averageRating);
-        assertEquals(4, t.ratingCount);
-    }
-
     // ---------------------------------------------------------------- statistics
 
     @Test
@@ -258,7 +251,7 @@ class ConferenceServiceTest {
         TalkDto b = rated(2, 7, 2);              // speaker 1, WORKSHOP 120, avg 3.5
         b.format = "WORKSHOP";
         b.durationMinutes = 120;
-        TalkDto c = rated(3, 0, 0);              // speaker 2 (deleted), LIGHTNING_10, unrated
+        TalkDto c = rated(3, 0, 0);              // speaker 2, LIGHTNING_10, unrated
         c.speakerId = 2L;
         c.format = "LIGHTNING_10";
         c.durationMinutes = 10;
@@ -266,9 +259,8 @@ class ConferenceServiceTest {
         TalkDto d = rated(4, 0, 0);              // speaker 3, PRESENTATION 45, unrated
         d.speakerId = 3L;
         givenTalks(a, b, c, d);
-        when(speakerDao.findById(1L)).thenReturn(speaker(1, "Ada", "ada@example.com"));
-        when(speakerDao.findById(3L)).thenReturn(speaker(3, "Grace", "grace@example.com"));
         when(speakerDao.count()).thenReturn(5);
+        when(speakerDao.countWithTalks()).thenReturn(2);
 
         Map<String, Object> stats = service.statistics();
 
@@ -295,10 +287,13 @@ class ConferenceServiceTest {
         when(talkDao.findAll()).thenReturn(new ArrayList<>(Arrays.asList(talks)));
     }
 
-    /** A talk whose ratings sum to {@code total} over {@code count} reviewers. */
-    private TalkDto rated(long id, long total, int count) {
-        when(ratingDao.stats(id)).thenReturn(stats(count, total));
-        return talk(id, 1, 45, "PRESENTATION");
+    /** A talk whose ratings sum to {@code total} over {@code count} reviewers, as TalkDao's query fills it in. */
+    private static TalkDto rated(long id, long total, int count) {
+        TalkDto t = talk(id, 1, 45, "PRESENTATION");
+        t.ratingCount = count;
+        t.averageRating = count == 0 ? null
+                : BigDecimal.valueOf(total).divide(BigDecimal.valueOf(count), 1, RoundingMode.HALF_UP).doubleValue();
+        return t;
     }
 
     private static TalkDto talk(long id, long speakerId, int minutes, String format) {
@@ -312,13 +307,6 @@ class ConferenceServiceTest {
         t.durationMinutes = minutes;
         t.submittedAt = new Date(0);
         return t;
-    }
-
-    private static Map<String, Object> stats(int count, long total) {
-        Map<String, Object> m = new HashMap<>();
-        m.put("cnt", count);
-        m.put("total", total);
-        return m;
     }
 
     private static Map<String, Object> speaker(long id, String name, String email) {
