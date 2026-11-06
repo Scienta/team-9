@@ -225,10 +225,11 @@ Content-Type: application/json
 `not json`
 HTTP 400
 
-# D3: an unknown talk
-PUT {{base_url}}/programme/R3/S2
-{ "talkId": 2147483647 }
-HTTP 404
+# D3: a talkId in the body that doesn't exist is 400; the harness's scheduling/check-1 sends
+# this request (we answered 404; lessons.md L13)
+PUT {{base_url}}/programme/R3/S1
+{ "talkId": 2065989499 }
+HTTP 400
 
 # R2, D8: take the talks out again (204, no body); an empty place is 404
 DELETE {{base_url}}/programme/R3/S1

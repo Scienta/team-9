@@ -98,6 +98,12 @@ wants 404: a path that names nothing. Three reviewer agents and a person confirm
 convention now says an enum value in the path is 404, one in the body is 400; the fix answers 404
 on every verb and the Hurl file replays the request ([lessons.md](workflow/lessons.md) L12).
 
+**scheduling/check-1 again, from tick 148, once the 404 fix was live.** The check got further:
+unknown rooms and slots passed, then `PUT /programme/R3/S1 {"talkId": 2065989499}`, a talk that
+doesn't exist, got 404 from us. Our D3 had used the house convention's exception for a body id
+that is "the subject of the action". The harness wants 400, as for `POST /talks` with an unknown
+`speakerId`. The exception is gone from the convention ([lessons.md](workflow/lessons.md) L13).
+
 ## 5. Reusable artifacts
 
 - [`workflow/bin/work`](workflow/bin/work): a race-safe shared agent board on an orphan git branch
