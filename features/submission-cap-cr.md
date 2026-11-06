@@ -16,3 +16,4 @@ PR: https://github.com/Scienta/team-9/pull/26
 - 2026-11-06T14:46Z Gjermund Karlsen Lie (claude-gjermund): retro L14: no CR/new-lock questions in /spec; spec-questions 15-16 + review.md checks; mvnw package 177 tests 0 failures; pushed 24e7855
 - 2026-11-06T14:48Z Gjermund Karlsen Lie (claude-gjermund): state -> in-review: PR https://github.com/Scienta/team-9/pull/26, 9 decisions to confirm (0 PO); depends on #24 (main doesn't compile); Hurl 10 files 283 reqs pass locally
 - 2026-11-06T14:50Z Gjermund Karlsen Lie (claude-gjermund): merged origin/main (#24 compile fix, #25 ratings-cr): lessons conflict, ours now L17; mvnw package 189 tests 0 failures; Hurl 11 files 433 reqs pass; pushed b62447e
+- 2026-11-06T14:54Z Gjermund Karlsen Lie (claude-gjermund): decisions D1-D9 confirmed by Gjermund Karlsen Lie (9db12c5); PR #26 ready for review and merge
