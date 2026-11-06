@@ -62,19 +62,14 @@ public class WorkshopService {
         }
     }
 
+    /** 404 only when no talk has that id; any other talk lists its registrations ([] for one that isn't a workshop). */
     public List<Map<String, Object>> registrations(long workshopId) {
-        workshop(workshopId);
+        if (talkDao.findById(workshopId) == null) {
+            throw notFound();
+        }
         return registrationDao.list(workshopId);
     }
 
-    /** The talk, if it's a workshop; otherwise 404 (D2). */
-    private TalkDto workshop(long id) {
-        TalkDto talk = talkDao.findById(id);
-        if (talk == null || !"WORKSHOP".equals(talk.format)) {
-            throw notFound();
-        }
-        return talk;
-    }
 
     private static ResponseStatusException notFound() {
         return new ResponseStatusException(HttpStatus.NOT_FOUND, "workshop not found");

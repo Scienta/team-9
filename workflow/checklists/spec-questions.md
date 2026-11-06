@@ -44,7 +44,8 @@ Our default answers, so every feature behaves the same way. A DECISION that foll
   Set by a person in review of workshop-registration D1; speaker registration predates it (lessons.md L6).
 - **404** for an id in the **path** that doesn't exist. Only then: if a resource with that id
   exists but is the wrong kind for the action (a talk that isn't a workshop), that's **409**, the
-  same as the wrong state (lessons.md L9).
+  same as the wrong state; and a **read** of it is **200** with what's there (an empty list), not
+  404. Answer the read and the write separately (lessons.md L9).
 - **400** for an id in the **body** that doesn't exist (as `POST /talks` does with `speakerId`),
   unless the request makes it the subject of the action. Write down which applies.
 - **409** for a well-formed request the current state forbids: a limit reached, an illegal state

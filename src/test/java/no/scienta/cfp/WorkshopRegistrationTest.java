@@ -81,7 +81,8 @@ class WorkshopRegistrationTest {
         // so 409 like a workshop that isn't accepted (harness workshop-registration/check-2; lessons.md L9).
         long presentation = accept(talk(speaker(), "PRESENTATION"));
         register(presentation, "A", unique("a"), 409);
-        list(presentation, 404);
+        // Listing it: the talk exists and has no registrations, so 200 [] (harness check-2 at tick 125).
+        assertEquals(0, list(presentation, 200).size());
         long lightning = accept(talk(speaker(), "LIGHTNING_10"));
         register(lightning, "A", unique("a"), 409);
 

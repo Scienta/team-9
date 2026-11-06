@@ -141,6 +141,12 @@ change made so it can't recur silently (with the file changed). Number them `L1`
 - **Harness change:** `workflow/checklists/spec-questions.md`: 404 only when nothing with that id
   exists; an existing resource of the wrong kind is 409. Test and Hurl request for an accepted
   presentation and lightning talk. `REVIEW.md` section 4.
+- **Then (tick 125):** with the POST fixed, the same check went one step further and listed the
+  presentation's registrations: our GET still answered 404, and was rejected too. The first fix
+  applied the new rule to the write only, though the PR had flagged the GET as untested. It's now
+  200 `[]`. **Harness change:** the convention now says a read of an existing resource of the
+  wrong kind is 200 with what's there, and to answer the read and the write separately. When a
+  FAULTY fix flags a sibling case as "untested", fix the sibling the same way in the same PR.
 
 ## L10: reviewers caught a no-op rejected by an earlier check, and thin Hurl coverage, in scheduling (tick ~105)
 
