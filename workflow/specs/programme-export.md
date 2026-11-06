@@ -47,31 +47,31 @@ No existing response changes. `/programme/{room}/{slot}` (scheduling) is untouch
 
 - **D1** A scheduled talk that's since been withdrawn (or otherwise changed status) → still exported:
   the request says "one row per scheduled talk" and scheduling R8/D11 keeps it on the programme
-  until someone takes it out. `UNCONFIRMED (ask the product owner)`
+  until someone takes it out. `CONFIRMED by Jonathan Lillesæter`
 - **D2** `format` is the enum value as the API writes it (`LIGHTNING_10`), in JSON and CSV, not the
   prettified form of `/admin/talks.csv` (`Lightning 10`): the request's schema is the enum.
-  `UNCONFIRMED`
+  `CONFIRMED by Jonathan Lillesæter`
 - **D3** `GET /programme` answers JSON whatever the `Accept` header (no 406 for `Accept: text/csv`):
   the request defines only one representation per path, and R5 does the same for the CSV.
-  Tests: `#jsonWhateverTheAcceptHeader`. `UNCONFIRMED`
+  Tests: `#jsonWhateverTheAcceptHeader`. `CONFIRMED by Jonathan Lillesæter`
 - **D4** The CSV's `Content-Type` carries `charset=UTF-8` (`text/csv; charset=UTF-8`): the media
   type is still `text/csv`, and the parameter makes the UTF-8 rule explicit (RFC 4180's registration
   of `text/csv` defines the parameter). Also `Content-Disposition: attachment; filename=programme.csv`, as `/admin/talks.csv`.
-  No BOM: "starts with exactly this header line". Tests: `#csvIsTextCsvEvenWhenJsonIsAsked`. `UNCONFIRMED`
+  No BOM: "starts with exactly this header line". Tests: `#csvIsTextCsvEvenWhenJsonIsAsked`. `CONFIRMED by Jonathan Lillesæter`
 - **D5** `talkId` in the CSV is the plain integer; `start`/`end` are `HH:mm` and never need quoting.
   A title with a line break (`\n`, `\r\n`) is kept as is inside a quoted field (RFC 4180), not
   flattened: "Unix line endings" is about the record separator, and the title is data. So the CSV
-  can contain `\r` inside a quoted title. `UNCONFIRMED (ask the product owner)`
+  can contain `\r` inside a quoted title. `CONFIRMED by Jonathan Lillesæter`
 - **D6** Unknown query parameters (`?room=R1`) are ignored, 200 with the whole programme: there are
-  no filters in the request. Tests: `#queryParametersAreIgnored`. `UNCONFIRMED`
+  no filters in the request. Tests: `#queryParametersAreIgnored`. `CONFIRMED by Jonathan Lillesæter`
 - **D7** A talk with no co-speakers has just the main speaker (`["Grace Hopper"]` / `Grace Hopper`).
-  Every talk has a main speaker, so `speakers` is never empty (except D9). `UNCONFIRMED`
+  Every talk has a main speaker, so `speakers` is never empty (except D9). `CONFIRMED by Jonathan Lillesæter`
 - **D8** Speaker names are the current names (`PUT /speakers/{id}` renames show up at once), per
-  "as they are right now". `UNCONFIRMED`
+  "as they are right now". `CONFIRMED by Jonathan Lillesæter`
 - **D9** A scheduled talk whose main speaker row is missing (`talk.speaker_id` has no foreign key;
   only possible with old data) → still exported, `speakers` holds just its co-speakers (possibly
   `[]` / empty field): R1 says one row per scheduled talk, and dropping the row would hide it from
-  the print shop. Tests: `#talkWithoutMainSpeakerRowStillExported`. `UNCONFIRMED`
+  the print shop. Tests: `#talkWithoutMainSpeakerRowStillExported`. `CONFIRMED by Jonathan Lillesæter`
 
 Checklist items with nothing to decide: 1 (no ids), 2 (no input), 3 (no limits), 4-7 (read only,
 no state, no owner), 10 (no old rule changes), 11 (reads only: each export is one consistent
