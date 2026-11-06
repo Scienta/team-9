@@ -92,3 +92,23 @@ change made so it can't recur silently (with the file changed). Number them `L1`
 - **Harness change:** a house convention for emails in `workflow/checklists/spec-questions.md`, so
   the next feature with an email defaults to the stricter rule.
 
+## L7: the upgrade's differential corpus only exercised our code, not the server and validator under it (spring-boot-4, review)
+
+- **What happened:** `workflow/bin/diff-upgrade` (163 requests, 2.7 vs 4.1.2) showed no status
+  difference, but review-edge found three: `GET /talks?sort=%zz` and >1000 query parameters went
+  200 → 400 with an ERROR stack trace (Tomcat 11 throws where Tomcat 9 dropped the parameter, and its
+  limit fell from 10000 to 1000), and a name of only Unicode whitespace went 201 → 400 (Hibernate
+  Validator 9). review-regress found that `bin/verify`'s log check matched only Boot 2.7's
+  `yyyy-MM-dd HH:mm:ss` timestamps, so on Boot 4 an ERROR line without a stack trace reported OK
+  (the L2 failure mode again), and that the branch was 4 commits behind main, whose new
+  `UpgradeContractTest` had never run against Boot 4.
+- **Root cause:** the corpus was written from our controllers' point of view (fields, ids, enums);
+  an upgrade also replaces the layers *before* the controller (servlet container parameter parsing,
+  URL decoding, bean validation) and the tooling that reads its output (log format). None of the
+  corpus requests reached those.
+- **Should have been caught by:** `/build` (the corpus and the local gates).
+- **Harness change:** `workflow/bin/diff-upgrade` now has malformed %-escapes, 1001 parameters, an
+  invalid-UTF-8 path, a form body and Unicode-whitespace names; `workflow/bin/verify` matches both
+  log formats (`ERROR_LINE`, shown to match Boot 2.7 and Boot 4 ERROR lines and not WARN/INFO);
+  `workflow/checklists/review.md` adds an item for server-level input and log format on upgrades;
+  `.claude/agents/review-*.md` now say Spring Boot 4 / Java 25.

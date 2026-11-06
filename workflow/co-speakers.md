@@ -31,7 +31,7 @@ Requirements: released co-speakers v1 snapshot. These choices fill in unspecifie
   queue for the row's tuple lock (≤ 2 s), then wait on the holder (≤ 2 s). Found when CI answered a
   queued DELETE with 503 after 4,002 ms; the test bound was 4,000 ms and is now < 5,500 ms. Still
   under the 5 s `/health` limit, though only just, if all 5 pooled connections are stuck waiting.
-- Timeout → Postgres SQLSTATE `55P03` (lock_not_available). Spring 5.3 translates it to
+- Timeout → Postgres SQLSTATE `55P03` (lock_not_available). Spring 5.3 (and Spring 7, with `src/main/resources/sql-error-codes.xml`) translates it to
   `CannotAcquireLockException`; a test checks this against real Postgres. The service doesn't rely on
   the exception type, though: it looks for SQLSTATE `55P03` in the cause chain and only then throws
   `LockTimeoutException`. Anything else (deadlock `40P01`, serialization failure `40001`, constraint

@@ -37,7 +37,8 @@ jobs:
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: "11"
+          # The same version the Dockerfile builds with; a branch that changes Java changes this file.
+          java-version-file: .java-version
       - name: Cache ~/.m2
         uses: actions/cache@v4
         with:

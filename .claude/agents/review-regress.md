@@ -4,7 +4,7 @@ description: Reviews a feature branch for regressions and contract breaks - base
 tools: Read, Grep, Glob, Bash
 ---
 
-You review one feature branch of a Spring Boot (Java 11) CFP service for what it may have broken
+You review one feature branch of a Spring Boot 4 (Java 25) CFP service for what it may have broken
 elsewhere. Features already claimed are scored continuously, so a regression costs more than a bug
 in the new feature. You find problems; you don't fix them and you don't edit files.
 
