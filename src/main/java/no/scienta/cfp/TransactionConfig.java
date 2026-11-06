@@ -11,6 +11,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.support.JdbcTransactionManager;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.support.DelegatingTransactionDefinition;
 
 /**
  * Sets each transaction's isolation level with {@code SET TRANSACTION ISOLATION LEVEL ...} as the transaction's first
@@ -20,7 +21,10 @@ import org.springframework.transaction.TransactionDefinition;
  * 20 workshop seats, one speaker twice in a slot; lessons.md L18). A statement inside the transaction travels with it.
  *
  * {@code @Transactional} without an isolation gets READ COMMITTED, the level every lock-then-read here is written for.
- * JPA isn't used, so this replaces the JPA transaction manager Boot would otherwise configure.
+ * The driver is never asked to set the level itself: its session-level SET (and Spring's and Hikari's resets after
+ * commit) would run outside the transaction and, through the pooler, on another client's backend (AGENTS.md).
+ * JPA isn't used, so this replaces the JPA transaction manager Boot would otherwise configure; no
+ * {@code spring.transaction.*} properties are set, so Boot's transaction customizers have nothing to apply.
  */
 @Configuration
 public class TransactionConfig {
@@ -36,11 +40,35 @@ public class TransactionConfig {
             super(dataSource);
         }
 
+        // Spring would call the driver's setTransactionIsolation for any level but DEFAULT: begin with DEFAULT, and
+        // keep the requested level for the statement inside the transaction.
+        @Override
+        protected void doBegin(Object transaction, TransactionDefinition definition) {
+            super.doBegin(transaction, new RequestedIsolation(definition));
+        }
+
         @Override
         protected void prepareTransactionalConnection(Connection con, TransactionDefinition definition) throws SQLException {
             super.prepareTransactionalConnection(con, definition);
+            int requested = definition instanceof RequestedIsolation
+                    ? ((RequestedIsolation) definition).requested : definition.getIsolationLevel();
             try (Statement s = con.createStatement()) {
-                s.execute("SET TRANSACTION ISOLATION LEVEL " + level(definition.getIsolationLevel()));
+                s.execute("SET TRANSACTION ISOLATION LEVEL " + level(requested));
+            }
+        }
+
+        /** The definition as given, but with DEFAULT isolation, remembering the level that was asked for. */
+        static final class RequestedIsolation extends DelegatingTransactionDefinition {
+            final int requested;
+
+            RequestedIsolation(TransactionDefinition target) {
+                super(target);
+                this.requested = target.getIsolationLevel();
+            }
+
+            @Override
+            public int getIsolationLevel() {
+                return ISOLATION_DEFAULT;
             }
         }
 

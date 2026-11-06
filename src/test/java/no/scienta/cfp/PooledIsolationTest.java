@@ -49,6 +49,9 @@ class PooledIsolationTest {
         TestDatabase.execute("ALTER DATABASE " + database + " SET default_transaction_isolation = 'repeatable read'");
     }
 
+    /** Calls to the driver's session-level {@code setTransactionIsolation}; the app should make none (review finding 1). */
+    static final java.util.concurrent.atomic.AtomicInteger SESSION_ISOLATION_SETS = new java.util.concurrent.atomic.AtomicInteger();
+
     /** Wraps the app's DataSource so its connections drop {@code setTransactionIsolation}, as the pooler does. */
     @TestConfiguration
     static class DropSessionIsolation {
@@ -72,8 +75,13 @@ class PooledIsolationTest {
 
         private static Connection wrap(Connection target) {
             return (Connection) Proxy.newProxyInstance(Connection.class.getClassLoader(), new Class<?>[] {Connection.class},
-                    (proxy, method, args) -> method.getName().equals("setTransactionIsolation") ? null
-                            : invoke(target, method, args));
+                    (proxy, method, args) -> {
+                        if (method.getName().equals("setTransactionIsolation")) {
+                            SESSION_ISOLATION_SETS.incrementAndGet();
+                            return null;
+                        }
+                        return invoke(target, method, args);
+                    });
         }
 
         private static Object invoke(Object target, java.lang.reflect.Method method, Object[] args) throws Throwable {
@@ -98,13 +106,27 @@ class PooledIsolationTest {
         assertEquals("repeatable read", jdbc.queryForObject("SHOW default_transaction_isolation", String.class));
     }
 
+    // A session-level SET runs outside the transaction and, through the pooler, on someone else's backend (AGENTS.md):
+    // the isolation is only ever set inside the transaction, also for methods pinned to READ COMMITTED or REPEATABLE READ.
+    @Test
+    void noSessionLevelIsolationSet() throws Exception {
+        long workshop = accept(talk(speaker(), "WORKSHOP"));
+        SESSION_ISOLATION_SETS.set(0);
+        assertEquals(201, send("POST", "/workshops/" + workshop + "/registrations",           // READ_COMMITTED pin
+                "{\"name\":\"Once\",\"email\":\"once-" + UUID.randomUUID() + "@example.com\"}").statusCode());
+        assertEquals(200, send("GET", "/admin/stats", null).statusCode());                      // REPEATABLE_READ pin
+        assertEquals(201, send("POST", "/talks", "{\"title\":\"T\",\"format\":\"PRESENTATION\","  // default
+                + "\"level\":\"BEGINNER\",\"speakerId\":" + speaker() + "}").statusCode());
+        assertEquals(0, SESSION_ISOLATION_SETS.get());
+    }
+
     // workshop-registration R4: 20 seats, also in a rush
     @Test
     void workshopRushNeverExceedsTwentySeats() throws Exception {
         for (int round = 0; round < ROUNDS; round++) {
             long workshop = accept(talk(speaker(), "WORKSHOP"));
             List<CompletableFuture<HttpResponse<String>>> sent = new ArrayList<>();
-            for (int i = 0; i < 26; i++) {
+            for (int i = 0; i < 23; i++) { // > 20, few enough that the queue clears well inside the 2 s lock_timeout
                 sent.add(async("POST", "/workshops/" + workshop + "/registrations",
                         "{\"name\":\"Rush " + i + "\",\"email\":\"rush-" + UUID.randomUUID() + "@example.com\"}"));
             }
@@ -139,9 +161,13 @@ class PooledIsolationTest {
     void schedulingRushForOnePlaceHasOneWinner() throws Exception {
         for (int round = 0; round < ROUNDS; round++) {
             jdbc.update("DELETE FROM programme");
-            List<CompletableFuture<HttpResponse<String>>> sent = new ArrayList<>();
+            List<Long> talks = new ArrayList<>();
             for (int i = 0; i < 8; i++) {
-                long talk = accept(talk(speaker(), "PRESENTATION"));
+                talks.add(accept(talk(speaker(), "PRESENTATION")));
+            }
+            // All talks exist first, so the PUTs really arrive together (review finding 6).
+            List<CompletableFuture<HttpResponse<String>>> sent = new ArrayList<>();
+            for (long talk : talks) {
                 sent.add(async("PUT", "/programme/R2/S3", "{\"talkId\":" + talk + "}"));
             }
             int ok = 0;
