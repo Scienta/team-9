@@ -1,4 +1,5 @@
 import importlib.util
+import json
 from pathlib import Path
 import unittest
 
@@ -138,8 +139,8 @@ class WatchFeedbackTest(unittest.TestCase):
                                                         "failure": {"method": GET_REG[0], "path": GET_REG[1]}}]
         events = self.poll(feedback(44, {"check-1": ("FAULTY", GET_NON_WORKSHOP)}))
         self.assertEqual(["MOVED"], self.kinds(events))
-        self.assertIn("now fails at GET /workshops/4205/registrations -> 404 (was POST /workshops/{id}/registrations)",
-                      events[0][1])
+        self.assertIn("now at a different request: GET /workshops/4205/registrations -> 404 "
+                      "(was POST /workshops/{id}/registrations)", events[0][1])
         # Same failure next tick: nothing new.
         self.timelines[name] = self.timelines[name] + [{"tick": 45, "status": "FAULTY",
                                                         "failure": {"method": GET_REG[0], "path": GET_REG[1]}}]
@@ -160,6 +161,79 @@ class WatchFeedbackTest(unittest.TestCase):
         self.poll(feedback(41, {"check-1": ("FAULTY", WRONG_ANSWER)}))
         self.timelines["talks/check-1"] = timeline("OK", "FAULTY", "FAULTY")
         self.assertEqual([], self.poll(feedback(42, {"check-1": ("FAULTY", WRONG_ANSWER)})))
+
+
+    # ---- review findings (each failed on the first version)
+
+    def test_poll_that_fails_halfway_changes_nothing_and_loses_no_event(self):
+        # Review finding 1: DOWN and a REAL decided before a timeline call raised were lost for good.
+        def failing(name):
+            raise RuntimeError("harness GET answered 429")
+        fb = feedback(41, {"check-1": ("FAULTY", WRONG_ANSWER)}, down=True)
+        before = json.dumps(self.state, sort_keys=True)
+        with self.assertRaises(RuntimeError):
+            watch.poll(self.state, fb, failing, 10_000.0, None)
+        self.assertEqual(before, json.dumps(self.state, sort_keys=True))
+        self.timelines["talks/check-1"] = timeline("OK", "FAULTY")
+        events = watch.poll(self.state, fb, lambda name: self.timelines[name], 10_000.0, None)
+        self.assertEqual(["DOWN", "REAL"], [k for k, _, _, _ in events])
+
+    def test_an_ok_tick_between_polls_ends_the_incident(self):
+        # Review finding 2: tick 12 OK was never polled; tick 13 failed again.
+        self.timelines["talks/check-1"] = timeline("OK", "FAULTY", start=10)
+        self.assertEqual(["REAL"], self.kinds(self.poll(feedback(11, {"check-1": ("FAULTY", WRONG_ANSWER)}))))
+        self.timelines["talks/check-1"] = timeline("OK", "FAULTY", "OK", "FAULTY", start=10)
+        events = self.poll(feedback(13, {"check-1": ("FAULTY", WRONG_ANSWER)}))
+        self.assertEqual(["RECOVERED", "REAL"], self.kinds(events))
+        self.assertIn("FAULTY since tick 11", events[0][1])
+        self.assertIn("FAULTY since tick 13", events[1][1])
+        events = self.poll(feedback(14, {"check-1": ("OK", None)}))
+        self.assertEqual(["RECOVERED"], self.kinds(events))
+        self.assertIn("FAULTY since tick 13", events[0][1])
+
+    def test_escalates_even_if_the_timeline_lags_a_tick(self):
+        # Review finding 5: the timeline endpoint one tick behind the feedback.
+        self.timelines["talks/check-1"] = timeline("OK")
+        self.assertEqual(["blip"], self.kinds(self.poll(feedback(41, {"check-1": ("FAULTY", NO_RESPONSE)}))))
+        self.timelines["talks/check-1"] = timeline("OK", "FAULTY")
+        events = self.poll(feedback(42, {"check-1": ("FAULTY", NO_RESPONSE)}))
+        self.assertEqual(["REAL"], self.kinds(events))
+        self.assertIn("since tick 41", events[0][1])
+
+    def test_missing_and_null_fields_do_not_crash_or_alarm(self):
+        # Review finding 6.
+        self.assertEqual([], self.poll({"tick": 41, "features": None}))
+        self.assertEqual([], self.poll({"tick": 42, "features": [{"slug": "talks", "claimed": True, "checks": None}]}))
+        self.assertEqual([], self.poll(feedback(43, {"check-1": (None, None)})))
+        self.timelines["talks/check-1"] = None
+        weird = {"tick": 1, "requests": [None, {"method": "GET", "path": "/x", "status": 500}]}
+        events = self.poll(feedback(44, {"check-1": ("FAULTY", weird)}))
+        self.assertEqual(["REAL"], self.kinds(events))
+
+    def test_since_is_never_before_the_claim(self):
+        # Review finding 7: points are only lost from the claim on.
+        self.timelines["acceptance/check-1"] = timeline(*["FAULTY"] * 15, start=5)
+        fb = feedback(19, {"check-1": ("OK", None)})
+        fb["features"].append({"slug": "acceptance", "claimed": True, "claimedAtTick": 19,
+                               "checks": [{"name": "check-1", "status": "FAULTY", "transcript": WRONG_ANSWER}]})
+        events = self.poll(fb)
+        self.assertEqual(["CLAIMED", "REAL"], self.kinds(events))
+        self.assertIn("since tick 19", events[1][1])
+
+    def test_checks_that_disappear_are_forgotten(self):
+        # Review finding 10.
+        self.timelines["talks/check-1"] = timeline("OK", "FAULTY")
+        self.poll(feedback(41, {"check-1": ("FAULTY", WRONG_ANSWER)}))
+        self.poll(feedback(42, {"check-2": ("OK", None)}))
+        self.assertNotIn("talks/check-1", self.state["checks"])
+
+    def test_board_messages_are_one_line(self):
+        # Review finding 4: bin/work rejects multi-line messages.
+        self.timelines["talks/check-1"] = timeline("OK", "FAULTY")
+        fb = feedback(41, {"check-1": ("FAULTY", WRONG_ANSWER)})
+        fb["features"][0]["checks"][0]["notes"] = ["line one\nline two"]
+        events = self.poll(fb)
+        self.assertNotIn("\n", events[0][1])
 
 
 if __name__ == "__main__":

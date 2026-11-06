@@ -19,15 +19,18 @@ This polls the team's feedback once a minute (the harness rate limit) and report
 REAL, MOVED, RECOVERED, CLAIMED, HARNESS-OK, DOWN and UP go to the `work` board (notes/feedback.md,
 and the feature's own log if it's on the board) and to a desktop notification. Every event, blips
 included, is appended to .workflow-state/feedback.log; each REAL or MOVED transcript is saved in
-.workflow-state/feedback/. It never starts agents, never touches git except through
+.workflow-state/feedback/. State and lock are in the main checkout's .workflow-state, shared by its
+worktrees, so it runs once per clone. It never starts agents, never touches git except through
 workflow/bin/work, and never sees the token: harness calls go through workflow/bin/harness.
 
   python3 workflow/watch_feedback.py             run until Ctrl-C (start it once per team, see
                                                  workflow/README.md#feedback-watcher)
-  python3 workflow/watch_feedback.py --once      one poll; exit 1 if a check is REAL or the service is down
+  python3 workflow/watch_feedback.py --once      one poll; exit 1 if a check is REAL or the service is
+                                                 down, 2 if the poll itself failed
   python3 workflow/watch_feedback.py --no-board --no-notify   local output only
 """
 import argparse
+import copy
 import fcntl
 import json
 import os
@@ -50,8 +53,8 @@ def trailing_faulty(timeline):
     """How many of the latest ticks in a check's timeline are FAULTY, the first of them, and the latest
     failing request as "METHOD /templated/path" (None if the timeline has none)."""
     streak, since, where = 0, None, None
-    for entry in reversed(timeline):
-        if entry.get("status") == "OK":
+    for entry in reversed(timeline or []):
+        if not isinstance(entry, dict) or entry.get("status") == "OK":
             break
         streak, since = streak + 1, entry.get("tick")
         failure = entry.get("failure") or {}
@@ -60,15 +63,18 @@ def trailing_faulty(timeline):
     return streak, since, where
 
 
+def requests_of(check):
+    return [r for r in ((check.get("transcript") or {}).get("requests") or []) if isinstance(r, dict)]
+
+
 def no_response(check):
     """True if the latest faulty run got no answer at all from us: the signature of a restart."""
-    requests = (check.get("transcript") or {}).get("requests") or []
-    return any(r.get("status") is None for r in requests)
+    return any(r.get("status") is None for r in requests_of(check))
 
 
 def last_request(check):
     """The last request of the latest faulty run, with our answer, e.g. 'GET /workshops/4205/registrations -> 404'."""
-    requests = (check.get("transcript") or {}).get("requests") or []
+    requests = requests_of(check)
     if not requests:
         return None
     r = requests[-1]
@@ -80,16 +86,36 @@ def notes_of(check):
     return f" Harness notes: {'; '.join(map(str, notes))}." if notes else ""
 
 
+def one_line(message):
+    """bin/work refuses multi-line messages, and harness notes may contain newlines."""
+    return " ".join(str(message).split())
+
+
+def poll(state, feedback, timeline_for, now, last_deploy):
+    """observe() on a copy of the state, kept only if it completes: a poll that fails halfway (a timeline
+    call that raises, Ctrl-C) changes nothing, so the next poll decides the same events again."""
+    draft = copy.deepcopy(state)
+    events = observe(draft, feedback, timeline_for, now, last_deploy)
+    state.clear()
+    state.update(draft)
+    return events
+
+
 def observe(state, feedback, timeline_for, now, last_deploy):
     """Compare the new feedback with what we saw last time. Updates state in place and returns events,
-    each (kind, slug or None, check name "<slug>/<check>" or None, message).
+    each (kind, slug or None, check name "<slug>/<check>" or None, one-line message).
 
     timeline_for(name) returns the harness timeline of check "<slug>/<check>". last_deploy is the epoch
-    time a new version was last seen on /health, or None.
+    time a new version was last seen on /health, or None. Use poll(), which makes this all-or-nothing.
     """
     events = []
+
+    def event(kind, slug, name, message):
+        events.append((kind, slug, name, one_line(message)))
+
     tick = feedback.get("tick")
-    checks = state.setdefault("checks", {})
+    previous = state.get("checks") or {}
+    checks = {}
     claimed = state.setdefault("claimed", [])
     confirmed = state.setdefault("confirmed", [])
     first_run = "tick" not in state
@@ -97,60 +123,87 @@ def observe(state, feedback, timeline_for, now, last_deploy):
     down = bool((feedback.get("down") or {}).get("current"))
     if down != state.get("down", False):
         reason = (feedback.get("down") or {}).get("reason")
-        events.append(("DOWN", None, None, f"harness says the service is DOWN at tick {tick}: {reason}") if down
-                      else ("UP", None, None, f"service is back up at tick {tick}"))
+        if down:
+            event("DOWN", None, None, f"harness says the service is DOWN at tick {tick}: {reason}")
+        else:
+            event("UP", None, None, f"service is back up at tick {tick}")
     state["down"] = down
 
-    for feature in feedback.get("features", []):
-        slug = feature["slug"]
-        if not feature.get("claimed"):
+    for feature in feedback.get("features") or []:
+        slug = feature.get("slug")
+        if not slug or not feature.get("claimed"):
             continue
+        feature_checks = [c for c in (feature.get("checks") or []) if isinstance(c, dict) and c.get("name")]
+        claimed_at = feature.get("claimedAtTick")
         if slug not in claimed:
             claimed.append(slug)
             if not first_run:
-                events.append(("CLAIMED", slug, None, f"{slug} claimed at tick {feature.get('claimedAtTick')}, "
-                                                      f"{len(feature.get('checks', []))} checks"))
-        all_ok = True
-        for check in feature.get("checks", []):
+                event("CLAIMED", slug, None, f"{slug} claimed at tick {claimed_at}, {len(feature_checks)} checks")
+        all_ok = bool(feature_checks)
+        for check in feature_checks:
             name = f"{slug}/{check['name']}"
-            seen = checks.setdefault(name, {"status": "OK", "alerted": False})
-            if check["status"] == "OK":
-                if seen["status"] != "OK":
-                    if seen.get("alerted"):
-                        events.append(("RECOVERED", slug, name, f"{name} OK again at tick {tick} "
-                                                                f"(FAULTY since tick {seen.get('since')})"))
-                    else:
-                        events.append(("blip-over", slug, name, f"{name} OK again at tick {tick}"))
+            seen = dict(previous.get(name) or {"status": "OK", "alerted": False})
+            checks[name] = seen
+            status = check.get("status")
+            if status not in ("OK", "FAULTY"):  # not run yet, or a status we don't know: no news
+                all_ok = False
+                continue
+
+            def ended(by_tick):
+                if seen.get("alerted"):
+                    event("RECOVERED", slug, name, f"{name} OK again at tick {by_tick} (FAULTY since tick {seen.get('since')})")
+                else:
+                    event("blip-over", slug, name, f"{name} OK again at tick {by_tick}")
+
+            if status == "OK":
+                if seen.get("status") == "FAULTY":
+                    ended(tick)
                 checks[name] = {"status": "OK", "alerted": False}
                 continue
+
             all_ok = False
             streak, since, where = trailing_faulty(timeline_for(name))
+            if seen.get("status") == "FAULTY" and since is not None and seen.get("since") is not None \
+                    and since > seen["since"]:
+                # The timeline's current run of FAULTY ticks started after ours did, so there was an OK
+                # tick in between that no poll saw: that incident is over, and this is a new one.
+                ended(since - 1)
+                seen = {"status": "OK", "alerted": False}
+                checks[name] = seen
+            continuing = seen.get("status") == "FAULTY"
+            if continuing:  # don't rely on the timeline already holding this tick
+                streak = max(streak, seen.get("streak", 1) + 1)
+                since = seen["since"] if seen.get("since") is not None else since  # a new incident was split off above
+                where = where or seen.get("where")
             streak = max(streak, 1)
+            since = since if since is not None else tick
+            if claimed_at is not None and since is not None and since < claimed_at:
+                since = claimed_at  # points are only lost from the claim on
             detail = last_request(check) or where or "?"
             recent_deploy = last_deploy is not None and now - last_deploy < DEPLOY_WINDOW
             blip = streak == 1 and (no_response(check) or recent_deploy)
             previous_where = seen.get("where")
-            seen.update(status="FAULTY", since=seen.get("since") if seen.get("alerted") else (since or tick),
-                        streak=streak, transcript=check.get("transcript"))
+            seen.update(status="FAULTY", since=since, streak=streak, transcript=check.get("transcript"))
             if blip:
                 if seen.get("reported_blip") != tick:
                     why = "no response" if no_response(check) else "right after a deploy"
-                    events.append(("blip", slug, name, f"{name} FAULTY at tick {tick} ({why}): {detail}"))
+                    event("blip", slug, name, f"{name} FAULTY at tick {tick} ({why}): {detail}")
                     seen["reported_blip"] = tick
                 continue
             if not seen.get("alerted"):
-                events.append(("REAL", slug, name, f"{name} FAULTY since tick {seen['since']} ({streak} tick(s)), "
-                                                   f"fails at {detail}.{notes_of(check)} Run /retro {slug}"))
+                event("REAL", slug, name, f"{name} FAULTY since tick {since} ({streak} tick(s)), "
+                                          f"fails at {detail}.{notes_of(check)} Run /retro {slug}")
                 seen["alerted"] = True
             elif where and previous_where and where != previous_where and not no_response(check):
-                events.append(("MOVED", slug, name, f"{name} still FAULTY but now fails at {detail} "
-                                                    f"(was {previous_where}): the last fix got it further.{notes_of(check)}"))
+                event("MOVED", slug, name, f"{name} still FAULTY, now at a different request: {detail} "
+                                           f"(was {previous_where}). Read the new transcript.{notes_of(check)}")
             if where and not no_response(check):
                 seen["where"] = where
-        if all_ok and slug not in confirmed and feature.get("checks"):
+        if all_ok and slug not in confirmed:
             confirmed.append(slug)
             if not first_run:
-                events.append(("HARNESS-OK", slug, None, f"{slug}: all {len(feature['checks'])} checks OK at tick {tick}"))
+                event("HARNESS-OK", slug, None, f"{slug}: all {len(feature_checks)} checks OK at tick {tick}")
+    state["checks"] = checks  # checks no longer in the feedback are forgotten
     state["tick"] = tick
     return events
 
@@ -163,12 +216,33 @@ def live_version(url):
         return None
 
 
-def board(slug, message):
+def state_dir():
+    """.workflow-state in the main checkout, shared by every worktree of it, so the lock and the state
+    are once per clone: a run in a feature worktree doesn't re-announce what the main one already did."""
+    try:
+        common = subprocess.run(["git", "rev-parse", "--git-common-dir"], cwd=ROOT, capture_output=True,
+                                text=True, check=True, timeout=10).stdout.strip()
+        return (ROOT / common).resolve().parent / ".workflow-state"
+    except Exception:
+        return ROOT / ".workflow-state"
+
+
+def board(slug, message, say):
+    """Write to the work board; never block the loop for long, and say when it didn't work."""
     env = dict(os.environ, WORK_AGENT=os.environ.get("WORK_AGENT", "feedback-watcher"))
     work = str(ROOT / "workflow" / "bin" / "work")
-    subprocess.run([work, "note", "feedback", message], env=env, capture_output=True)
-    if slug:  # also on the feature's own log, if it's on the board (base features may not be)
-        subprocess.run([work, "log", slug, "feedback: " + message], env=env, capture_output=True)
+    commands = [([work, "note", "feedback", message], "note")]
+    if slug:  # also on the feature's own log, if it's on the board (base features may not be: exit 3)
+        commands.append(([work, "log", slug, "feedback: " + message], f"log {slug}"))
+    for command, what in commands:
+        try:
+            result = subprocess.run(command, env=env, capture_output=True, text=True, timeout=60)
+        except subprocess.TimeoutExpired:
+            say(f"         board {what}: timed out after 60 s")
+            continue
+        if result.returncode not in (0, 3) or (result.returncode == 3 and what == "note"):
+            first = (result.stderr.strip().splitlines() or ["?"])[0]
+            say(f"         board {what} failed ({result.returncode}): {first}")
 
 
 def notify(kind, message):
@@ -190,13 +264,13 @@ def main():
     if args.interval < MIN_INTERVAL:
         parser.error(f"interval must be >= {MIN_INTERVAL} (harness rate limit, .claude/rules/safety.md)")
 
-    directory = ROOT / ".workflow-state"
+    directory = state_dir()
     directory.mkdir(mode=0o700, exist_ok=True)
     lock = (directory / "feedback.lock").open("w")
     try:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
     except BlockingIOError:
-        parser.exit(1, "Another feedback watcher is already running in this checkout.\n")
+        parser.exit(1, f"Another feedback watcher is already running for this clone ({directory}).\n")
     state_path = directory / "feedback.json"
     state = json.loads(state_path.read_text()) if state_path.exists() else {}
     transcripts = directory / "feedback"
@@ -224,14 +298,20 @@ def main():
             try:
                 version = live_version(url)
                 if version and version != state.get("version"):
-                    if state.get("version"):
+                    # A deploy we saw happen (the old version was live within the last few polls), so
+                    # 1-tick failures right now are restart blips. After a restart of this watcher, an
+                    # old version change says nothing about what's happening now.
+                    if state.get("version") and time.time() - state.get("version_seen_at", 0) < 3 * args.interval:
                         state["deployed_at"] = time.time()
+                    if state.get("version"):
                         say(f"DEPLOY: {url} now runs {version[:7]}")
                     state["version"] = version
+                if version:
+                    state["version_seen_at"] = time.time()
                 feedback = json.loads(client.get(f"/api/teams/{team}/feedback"))
                 tick = feedback.get("tick")
                 if tick != state.get("tick"):
-                    events = observe(state, feedback,
+                    events = poll(state, feedback,
                                      lambda name: json.loads(client.get(f"/api/teams/{team}/feedback/timeline?check={name}")),
                                      time.time(), state.get("deployed_at"))
                     for kind, slug, name, message in events:
@@ -239,10 +319,10 @@ def main():
                         if kind in ("REAL", "MOVED") and name:
                             path = transcripts / f"{name.replace('/', '-')}-tick{tick}.json"
                             path.write_text(json.dumps(state["checks"][name].get("transcript"), indent=2))
-                            say(f"         transcript: {path.relative_to(ROOT)}")
+                            say(f"         transcript: {path}")
                         if kind in SHARED:
                             if not args.no_board:
-                                board(slug, message)
+                                board(slug, message, say)
                             if not args.no_notify:
                                 notify(kind, message)
                 if args.once:

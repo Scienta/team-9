@@ -195,4 +195,8 @@ change made so it can't recur silently (with the file changed). Number them `L1`
   from today's real transcripts; each safeguard shown to fail when broken): REAL / MOVED / blip /
   RECOVERED to the board and the desktop. `/drive` and `/next` read its notes; `workflow/README.md`
   says to keep one running.
+- **Review:** an independent reviewer of the first version found ten problems, among them a poll
+  that failed halfway lost its events for good, an OK tick between two polls merged two incidents,
+  and every worktree ran its own state and re-announced everything. Each has a test that failed
+  first; the watcher now decides on a copy of its state and keeps it only if the poll completes.
 
