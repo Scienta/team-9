@@ -55,6 +55,29 @@ minute and tells you when a spec is released or changed. It doesn't act on it.
 | Learn | [`/retro`](../.claude/skills/retro/SKILL.md) | | [`lessons.md`](lessons.md), checklists, rules, skills |
 | Autopilot | [`/drive`](../.claude/skills/drive/SKILL.md) | | all of the above |
 
+## Feedback watcher
+
+Claimed features are scored on every tick, so a FAULTY check costs points until someone notices.
+`workflow/watch_feedback.py` watches the feedback once a minute and reports only changes: **REAL**
+(a check is failing and it isn't a deploy blip), **MOVED** (still failing, but at a later request:
+the last fix worked), **RECOVERED**, **blip** (one tick with no answer from us, during a deploy;
+logged only), **CLAIMED** / **HARNESS-OK**, and **DOWN** / **UP**. It writes the important ones to
+the board (`work show notes/feedback`, and the feature's own log) and to a desktop notification,
+saves each failing transcript in `.workflow-state/feedback/`, and logs everything to
+`.workflow-state/feedback.log`.
+
+Keep **one** running for the team during the game (it holds a lock per checkout; two people
+running it just doubles the board entries), in its own terminal or tmux pane:
+
+```bash
+python3 workflow/watch_feedback.py                  # until Ctrl-C
+python3 workflow/watch_feedback.py --once           # one look; exit 1 if anything is REAL or down
+nohup python3 -u workflow/watch_feedback.py > .workflow-state/watcher-feedback.out 2>&1 &
+```
+
+It only reads and reports: the fix is still a `/retro` by a person or `/drive`. Tests:
+`python3 -m unittest workflow/test_watch_feedback.py`.
+
 ## Who decides what
 
 - **Agents** write specs, tests, code and evidence; open PRs; never merge, never claim.

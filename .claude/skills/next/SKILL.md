@@ -12,5 +12,7 @@ description: Fetch every feature spec from the harness, list each feature's stat
    - For a **new** feature: what it asks for (read `specs/<slug>.md`).
    - For **SPEC CHANGED**: what changed (`git diff specs/<slug>.md`) and whether something we built
      or claimed is affected.
-   - For **FAULTY**: which checks, from `workflow/bin/harness /api/teams/$(cat .fagdag/team)/feedback`.
+   - For **FAULTY**: which checks, from `workflow/bin/harness /api/teams/$(cat .fagdag/team)/feedback`,
+     and what the feedback watcher said about them (`workflow/bin/work show notes/feedback`: REAL,
+     blip, MOVED or RECOVERED). If its last entry is old, say nobody seems to be running it.
 3. Don't start the suggested step unless the user asks (or you're running under `/drive`).

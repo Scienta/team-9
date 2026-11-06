@@ -181,3 +181,18 @@ change made so it can't recur silently (with the file changed). Number them `L1`
 - **Harness change:** `ListQueriesTest` counts the SQL statements a request runs on the app's own
   DataSource (fails on the old code at 61-91 statements for 30 talks; passes at ≤ 5), and is the
   pattern for new list endpoints. `workflow/checklists/review.md` asks for it.
+
+## L12: claimed features failed for 15 and 27 ticks before anyone looked (co-speakers, workshop-registration)
+
+- **What happened:** co-speakers/check-1 was FAULTY from tick 46 to 60 and workshop-registration/check-2
+  from 107 to 133. Both were found only when a person asked an agent to read the feedback; the
+  second fix exposed a further failure (the GET after the POST) that again waited for a person.
+  Meanwhile scheduling/check-1 went FAULTY at tick 140 and was found by this watcher's first live run.
+- **Root cause:** feedback was read only on demand (`bin/next`, `/verify`, a `/drive` iteration up to
+  ~20 minutes apart); nothing watched it, and nothing told a deploy blip from a real failure.
+- **Should have been caught by:** a running watcher, from the first FAULTY tick.
+- **Harness change:** `workflow/watch_feedback.py` (tests in `workflow/test_watch_feedback.py`, built
+  from today's real transcripts; each safeguard shown to fail when broken): REAL / MOVED / blip /
+  RECOVERED to the board and the desktop. `/drive` and `/next` read its notes; `workflow/README.md`
+  says to keep one running.
+
