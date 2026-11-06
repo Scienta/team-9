@@ -189,13 +189,26 @@ def corpus():
     add("GET", "/talks//1")
     add("GET", "/speakers/1.json")
     add("GET", "/TALKS/1")
+    # --- Tomcat parameter parsing (Tomcat 11 throws where Tomcat 9 dropped the parameter)
+    add("GET", "/talks?sort=%zz")
+    add("GET", "/talks?speakerId=%")
+    add("GET", "/talks?sort=rating&%")
+    add("GET", "/talks?" + "&".join("p%d=1" % i for i in range(1001)))
+    add("GET", "/talks?sort=rating&" + "&".join("p%d=1" % i for i in range(1001)))
+    add("POST", "/speakers", '{"name":"100%","email":"pct@example.com"}',
+        {"Content-Type": "application/x-www-form-urlencoded"})
+    add("GET", "/talks/%C0%AE")
+    # --- Unicode whitespace in a required name (Hibernate Validator 9's @NotBlank)
+    add("POST", "/speakers", '{"name":"\\u2003","email":"emspace@example.com"}')
+    add("POST", "/speakers", '{"name":"\\u00a0","email":"nbsp@example.com"}')
     return c
 
 
 HEADERS = ["Content-Type", "Retry-After", "Content-Disposition", "Allow", "Location", "Vary"]
 MASKS = [
     (re.compile(r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}\+00:00'), "<submittedAt>"),
-    (re.compile(r'"timestamp":"[^"]*"'), '"timestamp":"<ts>"'),
+    # Only the digits: the offset (+00:00 on 2.7, Z with Jackson 3's own defaults) must stay the same.
+    (re.compile(r'"timestamp":"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}'), '"timestamp":"<ts>'),
     (re.compile(r'"generated":"[^"]*"'), '"generated":"<ts>"'),
     (re.compile(r'"submittedOn":"\d{4}-\d{2}-\d{2}"'), '"submittedOn":"<date>"'),
     (re.compile(r'\d{1,2}/\d{1,2}/\d{2}, \d{1,2}:\d{2} [AP]M'), "<usShort>"),

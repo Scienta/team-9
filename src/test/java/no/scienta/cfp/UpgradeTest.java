@@ -46,7 +46,7 @@ class UpgradeTest {
         assertEquals(200, res.statusCode(), res.body());
         assertTrue(SpringBootVersion.getVersion().startsWith("4."), SpringBootVersion.getVersion());
         assertTrue(SpringVersion.getVersion().startsWith("7."), SpringVersion.getVersion());
-        assertTrue(Runtime.version().feature() >= 17, Runtime.version().toString());
+        assertEquals(25, Runtime.version().feature(), Runtime.version().toString());
         assertEquals("{\"versions\":{\"java\":\"" + System.getProperty("java.version") + "\",\"springBoot\":\""
                 + SpringBootVersion.getVersion() + "\",\"springFramework\":\"" + SpringVersion.getVersion() + "\"}}",
                 res.body());
@@ -90,7 +90,8 @@ class UpgradeTest {
         assertTrue(send("GET", "/talks/" + talkId, null).body().contains("\"averageRating\":4.5,\"ratingCount\":2"));
 
         String csv = send("GET", "/admin/talks.csv", null).body();
-        assertTrue(Pattern.compile(";\\d{1,2}\\. [a-z]{3}\\. \\d{4};4,5;2\\n").matcher(csv).find(), csv);
+        // "6. nov. 2026", or "6. mai 2026" (no dot in May)
+        assertTrue(Pattern.compile(";\\d{1,2}\\. \\p{L}+\\.? \\d{4};4,5;2\\n").matcher(csv).find(), csv);
     }
 
     // R4: request and response JSON as on 2.7 (spring.jackson.* keys Boot 4 renamed, Jackson 2 defaults).
@@ -106,6 +107,29 @@ class UpgradeTest {
         assertTrue(emoji.body().contains("\"name\":\"Mic \\uD83C\\uDFA4\""), emoji.body());
 
         assertEquals(400, send("PUT", "/talks/1/ratings/1", "{\"score\":4.0}").statusCode());
+
+        // D2: Jackson 3 would reject the trailing tokens; Jackson 2 read the first value and ignored the rest.
+        HttpResponse<String> trailing = send("POST", "/speakers",
+                "{\"name\":\"Trailing\",\"email\":\"t-" + UUID.randomUUID() + "@example.com\"} {\"x\":1}");
+        assertEquals(201, trailing.statusCode(), trailing.body());
+    }
+
+    // R4: a parameter Tomcat can't decode is dropped, as Tomcat 9 did, not a 400; and up to 10000 parameters.
+    @Test
+    void undecodableAndManyQueryParametersAsBefore() throws Exception {
+        assertEquals(200, rawGetStatus("/talks?sort=%zz"));
+        assertEquals(200, rawGetStatus("/talks?speakerId=%"));
+        assertEquals(200, rawGetStatus("/talks?sort=rating&x=%zz"));
+        assertEquals(400, rawGetStatus("/talks?sort=RATING&x=%zz"));
+        StringBuilder many = new StringBuilder("/talks?a=1");
+        for (int i = 0; i < 1500; i++) {
+            many.append("&a=1"); // short, so the URL stays under the 8 KB header limit (the same on 2.7)
+        }
+        // The 1502nd parameter is still read (so the bad sort is a 400): Tomcat 11's default limit of 1000 would
+        // drop it.
+        HttpResponse<String> manyRes = send("GET", many + "&sort=RATING", null);
+        assertEquals(400, manyRes.statusCode(), manyRes.body());
+        assertTrue(manyRes.body().contains("sort must be 'rating'"), manyRes.body());
     }
 
     // R4, D5: errors keep Boot's body shape and the charset in the content type.
@@ -123,6 +147,7 @@ class UpgradeTest {
                 invalid.body());
         assertTrue(invalid.body().contains("\"field\":\"email\""), invalid.body());
 
+        assertTrue(res.body().matches(".*\"timestamp\":\"\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}\\+00:00\".*"), res.body());
         assertEquals("{\"status\":\"UP\"}", send("GET", "/actuator/health", null).body());
         assertFalse(send("GET", "/actuator/env", null).statusCode() == 200);
     }
@@ -139,6 +164,17 @@ class UpgradeTest {
         Matcher m = ID.matcher(res.body());
         assertTrue(m.find(), res.body());
         return m.group(1);
+    }
+
+    // java.net.URI refuses a malformed %-escape, so these go over a plain socket.
+    private int rawGetStatus(String pathAndQuery) throws Exception {
+        try (java.net.Socket socket = new java.net.Socket("localhost", port)) {
+            socket.getOutputStream().write(("GET " + pathAndQuery + " HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n")
+                    .getBytes(java.nio.charset.StandardCharsets.US_ASCII));
+            String statusLine = new java.io.BufferedReader(new java.io.InputStreamReader(socket.getInputStream(),
+                    java.nio.charset.StandardCharsets.US_ASCII)).readLine();
+            return Integer.parseInt(statusLine.split(" ")[1]);
+        }
     }
 
     private HttpResponse<String> send(String method, String path, String json) throws Exception {

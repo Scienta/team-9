@@ -8,7 +8,7 @@ HTTP 200
 [Asserts]
 jsonpath "$.versions.springBoot" startsWith "4."
 jsonpath "$.versions.springFramework" startsWith "7."
-jsonpath "$.versions.java" matches /^(1[7-9]|2[0-9])(\.|$)/
+jsonpath "$.versions.java" matches /^25(\.|$)/
 
 # R5: a trailing slash on POST /speakers/
 POST {{base_url}}/speakers/
@@ -75,7 +75,7 @@ HTTP 200
 jsonpath "$.averageRating" == 4.5
 jsonpath "$.ratingCount" == 2
 
-# D5: errors keep Boot's shape, message and charset
+# D5, D7: errors keep Boot's shape, our message, and the charset
 GET {{base_url}}/speakers/0
 HTTP 404
 [Asserts]
@@ -84,6 +84,12 @@ jsonpath "$.status" == 404
 jsonpath "$.error" == "Not Found"
 jsonpath "$.message" == "speaker not found"
 jsonpath "$.path" == "/speakers/0"
+
+# R4: a query parameter that can't be decoded is ignored, as on 2.7 (Tomcat 11 alone answers 400)
+GET {{base_url}}/talks?speakerId={{speaker_id}}&x=%zz
+HTTP 200
+[Asserts]
+jsonpath "$" count == 1
 
 # R7: the deploy contract's health
 GET {{base_url}}/health

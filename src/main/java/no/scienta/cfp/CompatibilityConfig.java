@@ -5,6 +5,9 @@ import java.nio.charset.StandardCharsets;
 import jakarta.servlet.DispatcherType;
 import jakarta.servlet.Filter;
 
+import org.apache.tomcat.util.http.InvalidParameterException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -17,6 +20,8 @@ import org.springframework.web.filter.UrlHandlerFilter;
  */
 @Configuration
 public class CompatibilityConfig {
+
+    private static final Logger log = LoggerFactory.getLogger(CompatibilityConfig.class);
 
     /**
      * {@code /speakers/} and {@code /speakers/{id}/} must keep working like the URLs without the slash (the legacy
@@ -46,6 +51,27 @@ public class CompatibilityConfig {
         registration.setName("errorCharsetFilter");
         registration.setDispatcherTypes(DispatcherType.ERROR);
         registration.setOrder(Ordered.HIGHEST_PRECEDENCE);
+        return registration;
+    }
+
+    /**
+     * A query or form parameter Tomcat can't decode ({@code ?sort=%zz}) was dropped by Tomcat 9 and the request went
+     * on without it. Tomcat 11 still drops it but also throws on the first parameter read, which became a 400 with an
+     * ERROR stack trace. Parameters are parsed here once, and the failure swallowed: Tomcat parses only once, so later
+     * reads see the parameters that did decode, as on 2.7.
+     */
+    @Bean
+    public FilterRegistrationBean<Filter> lenientParametersFilter() {
+        FilterRegistrationBean<Filter> registration = new FilterRegistrationBean<>((request, response, chain) -> {
+            try {
+                request.getParameterMap();
+            } catch (InvalidParameterException e) {
+                log.debug("ignored undecodable request parameters: " + e.getMessage());
+            }
+            chain.doFilter(request, response);
+        });
+        registration.setName("lenientParametersFilter");
+        registration.setOrder(Ordered.HIGHEST_PRECEDENCE + 2);
         return registration;
     }
 }

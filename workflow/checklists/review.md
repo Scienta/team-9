@@ -20,6 +20,9 @@ PR. `/retro` adds items when a review let something through: say where it came f
 - [ ] Limits and state transitions hold under concurrent requests: row lock (`SELECT … FOR UPDATE`)
       or conditional write, inside one transaction. No advisory locks, no session `SET`.
 - [ ] No more than 5 DB connections needed per request path; no connection held during slow work.
+- [ ] A framework, server or JDK upgrade: input that never reaches our code still answers as before:
+      malformed %-escapes in the query, more than 1000 parameters, an invalid-UTF-8 path, Unicode
+      whitespace in validated fields (all in `workflow/bin/diff-upgrade`) (`lessons.md#L7`).
 
 ## Regressions and contract (`review-regress`)
 
@@ -34,4 +37,5 @@ PR. `/retro` adds items when a review let something through: say where it came f
 - [ ] A framework, JDK or library upgrade: `workflow/bin/diff-upgrade <old> <new>` against both builds on
       empty databases shows no status difference, and every other difference is fixed or listed as a
       DECISION. Renamed config keys are silently ignored on Spring Boot 4, so run once with
-      `spring-boot-properties-migrator` too (spring-boot-4).
+      `spring-boot-properties-migrator` too, and check `workflow/bin/verify`'s `ERROR_LINE` still matches
+      the new log format (`lessons.md#L7`).

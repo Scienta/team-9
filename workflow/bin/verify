@@ -41,8 +41,10 @@ fi
 
 since="$(git log -1 --format=%cI origin/main | xargs -I{} date -u -d {} +%Y-%m-%dT%H:%M:%SZ)"
 # Only real errors: ERROR-level lines and stack frames. WARN lines for rejected input (a 400) are expected.
+# Boot 2.7 logged "2026-11-06 12:38:06.315 ERROR", Boot 4 logs "2026-11-06T12:38:06.315Z ERROR" (or +01:00).
+ERROR_LINE='^[0-9-]+[ T][0-9:.]+(Z|[+-][0-9:]+)? +ERROR |^Caused by|^\s+at '
 errors="$(.github/fagdag/logs.sh --tail 2000 --since "$since" 2>/dev/null |
-  sed 's/^[^ ]* //' | jq -r '.message // empty' 2>/dev/null | grep -E '^[0-9-]+ [0-9:.]+ +ERROR |^Caused by|^\s+at ' | cut -c1-300 | head -20 || true)"
+  sed 's/^[^ ]* //' | jq -r '.message // empty' 2>/dev/null | grep -E "$ERROR_LINE" | cut -c1-300 | head -20 || true)"
 if [ -z "$errors" ]; then
   logs_line="OK: no ERROR lines or stack traces in the logs since $since"
 else
