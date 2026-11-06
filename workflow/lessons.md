@@ -269,3 +269,25 @@ change made so it can't recur silently (with the file changed). Number them `L1`
   two cases (a non-binary tie like 43/40 = 1.075, a pair that ties only after rounding). Fixed:
   `/admin/stats` sums and divides as `BigDecimal` (`RatingsCrStatsTest` failed with 1.5 before);
   `RatingsCrTest` and `examples/ratings-cr.hurl` have the 1.075 case and the 3.125 vs 3.1176 tie.
+
+## L17: reviewers caught an untested new lock, a stale team spec and decisions tested at the edge in submission-cap-cr (build)
+
+- **What happened:** the first build of submission-cap-cr passed every local gate. review-spec and
+  review-edge found: the new speaker-row lock in `PUT /talks/{id}/co-speakers/{speakerId}` had no
+  timeout test (the 503 was in the API table "as before", but the lock was new); a first test for it,
+  holding the speaker `FOR UPDATE`, passed with the lock removed too, because the co-speaker insert's
+  foreign-key check (`KEY SHARE`) waits on the same row; `workflow/co-speakers.md` still said
+  co-speaking doesn't affect the quota; D6 ("an accept doesn't re-check the cap") was tested only at
+  the cap, not above it; "in the running" was a denylist in Java and an allowlist in SQL; and the Hurl
+  file missed R2's rejected-co-speaker case and some D9 400s. No behaviour was wrong.
+- **Root cause:** `/spec` had no question for a change request ("which earlier rules does this
+  replace?") or for a new lock ("what times out?"), so neither the team spec nor the tests asked; and
+  a decision's test was written for the nearest easy state, not the state the decision is about.
+- **Should have been caught by:** `/spec` (items 15 and 16) and `/build` step 1.
+- **Harness change:** `workflow/checklists/spec-questions.md` items 15 (change requests) and 16 (new
+  locks); `workflow/checklists/review.md` items for lock-timeout tests that isolate the lock, one
+  definition of a status set, decisions tested in their own case, and replaced team specs. The fix:
+  `SubmissionCapTest#speakerLockTimeoutAnswers503AndChangesNothing` (holds `FOR NO KEY UPDATE`; fails
+  with 200 when `lockSpeaker` is removed), D6 accept at load 5 in `#overTheCapKeepsEverythingButGetsNothingNew`
+  (fails with a re-check added to `decide`), `TalkDao.IN_THE_RUNNING` shared by both checks,
+  `workflow/co-speakers.md` updated, and three more Hurl requests.

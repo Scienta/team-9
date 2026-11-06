@@ -102,31 +102,23 @@ class CoSpeakersTest {
     }
 
     @Test
-    void coSpeakingDoesNotUseSubmissionQuotaOrAppearInOwnLists() throws Exception {
-        long main = speaker(), co = speaker();
-        // Co-speaking on more than three different talks must not consume any own submissions.
-        for (int i = 0; i < 4; i++) {
+    void coSpeakingDoesNotAppearInOwnLists() throws Exception {
+        // Co-speaking now counts towards the 3-talk cap (submission-cap-cr, SubmissionCapTest); it still doesn't put
+        // the talk in the co-speaker's own lists.
+        long co = speaker();
+        for (int i = 0; i < 2; i++) {
             long otherMain = speaker();
             long otherTalk = submit(otherMain, 201).get("id").asLong();
             ids(mutate("PUT", otherTalk, co, 200), co);
         }
         assertEquals(0, get("/speakers/" + co + "/talks").size());
         assertEquals(0, get("/talks?speakerId=" + co).size());
-        List<Long> own = new ArrayList<>();
-        for (int i = 0; i < 3; i++) own.add(submit(co, 201).get("id").asLong());
-        submit(co, 409);
-        long talk = submit(main, 201).get("id").asLong();
-        ids(mutate("PUT", talk, co, 200), co); // already at own quota
+        long own = submit(co, 201).get("id").asLong();
         for (String path : Arrays.asList("/speakers/" + co + "/talks", "/talks?speakerId=" + co)) {
             JsonNode list = get(path);
-            assertEquals(3, list.size());
-            for (JsonNode item : list) assertTrue(own.contains(item.get("id").asLong()));
+            assertEquals(1, list.size());
+            assertEquals(own, list.get(0).get("id").asLong());
         }
-        submit(co, 409);
-        // Main speaker's quota also still only counts their own talks.
-        submit(main, 201);
-        submit(main, 201);
-        submit(main, 409);
     }
 
     @Test

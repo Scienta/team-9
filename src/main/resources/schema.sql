@@ -81,3 +81,7 @@ CREATE TABLE IF NOT EXISTS programme (
     PRIMARY KEY (room, slot)                        -- one talk per room and slot (R5)
 );
 CREATE UNIQUE INDEX IF NOT EXISTS ux_programme_talk ON programme (talk_id);   -- on the programme once (R6)
+
+-- A speaker's load counts the talks they co-speak on (workflow/specs/submission-cap-cr.md); the primary key
+-- (talk_id, speaker_id) can't serve a lookup by speaker.
+CREATE INDEX IF NOT EXISTS ix_talk_co_speaker_speaker ON talk_co_speaker (speaker_id);

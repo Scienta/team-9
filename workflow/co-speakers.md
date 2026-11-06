@@ -8,7 +8,8 @@ Requirements: released co-speakers v1 snapshot. These choices fill in unspecifie
 - PUT of the main speaker: 400. PUT of a third distinct co-speaker: 409. Duplicate PUT: 200 no-op, even at capacity; it must not reorder entries.
 - DELETE of a registered speaker not attached to the talk (including the main speaker, and a repeated DELETE): 404 `speaker is not a co-speaker of this talk`, nothing changes. The main speaker never changes. (Was a 200 no-op until tick 51: the harness's co-speakers/check-1 rejected the repeated DELETE; lessons.md L3.)
 - Removing then re-adding appends at the end. No body is required for either mutation; request bodies have no effect.
-- Co-speaking does not affect main-speaker filters, own talk lists, submission quotas, or ratings. No restriction based on the co-speaker's submission count.
+- Co-speaking does not affect main-speaker filters, own talk lists, or ratings.
+- **Replaced by [submission-cap-cr](specs/submission-cap-cr.md):** co-speaking now counts towards the 3-talk cap, and a speaker at the cap can't be added to a talk in the running (409). It used to say co-speaking doesn't affect submission quotas.
 
 ## Persistence / concurrency
 - Add an idempotent schema extension with foreign keys to talk/speaker, unique (talk, speaker), and a sequence-backed addition order; existing talks naturally have an empty list.

@@ -174,7 +174,9 @@ class SchedulingTest {
         long alanWithGrace = accept(talk(alan, "PRESENTATION"));
         coSpeaker(alanWithGrace, grace);
         put("R1", "S3", alanWithGrace, 200);
-        put("R2", "S3", accept(talk(grace, "PRESENTATION")), 409);
+        long graceOwn = accept(talk(grace, "PRESENTATION"));
+        put("R2", "S3", graceOwn, 409);
+        withdraw(graceOwn); // frees grace's place under the 3-talk cap (submission-cap-cr) for the co-speaking below
 
         // co-speaker vs co-speaker (grace co-speaks on alanWithGrace in S3)
         long edsgerWithGrace = accept(talk(edsger, "PRESENTATION"));
