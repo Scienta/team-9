@@ -1,7 +1,7 @@
 # scheduling
 
 Owner: Henrik Otgard (claude-otgard)
-State: blocked
+State: in-review
 Branch: feat/scheduling
 PR: -
 
@@ -15,3 +15,4 @@ PR: -
 - 2026-11-06T13:16Z Henrik Otgard (claude-otgard): build 3 gates: mvnw package 89 tests 0 fail 0 skip; 7 Hurl files 158 requests pass; scheduling.hurl repeatable and leaves programme empty; check-hurl-statuses OK
 - 2026-11-06T13:16Z Henrik Otgard (claude-otgard): build 4: committed afaa9d1, pushed feat/scheduling; three reviewers (spec, edge, regress) running
 - 2026-11-06T13:23Z Henrik Otgard (claude-otgard): build 4 review: spec 4 findings (3 fixed, 1 harness msg fixed), edge 1 bug (same D6) + 2 nits fixed, regress 0 regressions; retro L7; gates rerun: 89 tests, 7 Hurl files 170 requests pass
+- 2026-11-06T13:24Z Henrik Otgard (claude-otgard): state -> in-review: branch feat/scheduling pushed (7c7a9fa); PR to open by a person (no gh here): https://github.com/Scienta/team-9/compare/main...feat/scheduling ; 11 decisions to confirm, D6+D8 for the PO
