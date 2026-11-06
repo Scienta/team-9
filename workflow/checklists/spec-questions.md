@@ -30,6 +30,10 @@ from (`lessons.md#L<n>`).
 11. **Concurrency.** Two people doing conflicting things at once: what stops an illegal state?
     (Row locks or conditional writes: advisory locks are not available.)
 12. **Formats.** Exact string formats for any new timestamps or numbers.
+13. **Order of checks vs. no-ops.** If a decision makes a repeat a no-op (200, nothing changes),
+    say where it sits in the check order, and check every later state change against it: can the
+    resource change after the first call (withdrawn, new members) so a later check rejects the
+    repeat? Write the answer into both decisions (lessons.md L7).
 
 ## House conventions
 

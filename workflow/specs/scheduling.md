@@ -65,16 +65,19 @@ No existing response changes: `Talk` gets no new field.
 - **D5** A workshop in any slot but `S4` → 409: the request is well-formed, the rule forbids it.
   `UNCONFIRMED`
 - **D6** Putting the same talk in the same place again → 200 with the `Entry`, nothing changes:
-  `PUT` is idempotent and the talk is still on the programme only once. The same talk in a
-  different place → 409 (R6: take it out first). `UNCONFIRMED (ask the product owner)`
+  `PUT` is idempotent and the talk is still on the programme only once. This holds even if the
+  talk changed since it was put there (withdrawn, or a co-speaker who now clashes, R8): the repeat
+  changes nothing, so no rule is checked again. The same talk in a different place → 409 (R6: take
+  it out first). `UNCONFIRMED (ask the product owner)`
 - **D7** `GET` on an empty place → 404: there is no `Entry` to show (house convention: 404 for a
   path that names nothing). `UNCONFIRMED`
 - **D8** `DELETE` answers 204 with no body: the request gives `DELETE` no response schema, unlike
   `PUT` and `GET`. An empty place, including a second `DELETE`, → 404 (house convention, lessons.md
   L3). `UNCONFIRMED (ask the product owner)`
 - **D9** Which checks run first when several fail → path (400), body (400), talk exists (404),
-  status (409), fit (409), place free (409), talk not elsewhere (409), speakers (409). Every
-  failure changes nothing. `UNCONFIRMED`
+  then the D6 repeat (200), status (409), fit (409), place free (409), talk not elsewhere (409),
+  speakers (409). Every failure changes nothing. Spring answers 415 for a non-JSON `Content-Type`
+  before any of these. `UNCONFIRMED`
 - **D10** Who may change the programme → anyone; the request has no caller identity. `UNCONFIRMED`
 - **D11** Withdrawing a scheduled talk, or changing its co-speakers, doesn't touch the programme
   (R8). A withdrawn talk stays in its place until someone deletes it. `UNCONFIRMED`

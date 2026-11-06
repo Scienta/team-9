@@ -25,7 +25,7 @@ public class ProgrammeService {
     }
 
     /**
-     * Checks in the order of D9. The slot is locked before the place, speaker and talk checks, so PUTs into one slot run
+     * Checks in the order of D9. The slot is locked before any check that reads the programme, so PUTs into one slot run
      * one at a time and R5 and R7 can't race; READ_COMMITTED, so each sees what the previous holder committed. R6 spans
      * slots: the unique index on talk_id holds it, and a violation answers 409.
      */
@@ -38,18 +38,19 @@ public class ProgrammeService {
             if (talk == null) {
                 throw new ResponseStatusException(HttpStatus.NOT_FOUND, "talk not found");
             }
+            programmeDao.lockSlot(slot);
+            Long current = programmeDao.talkAt(room, slot);
+            if (current != null && current == talkId) {
+                // D6: already there, nothing changes, even if the talk has changed since (R8)
+                return Programme.entry(room, slot, talkId);
+            }
             if (!"ACCEPTED".equals(talk.status)) {
                 throw conflict("a " + talk.status + " talk can't go on the programme");
             }
             if ("WORKSHOP".equals(talk.format) && !Programme.LONG_SLOT.equals(slot)) {
                 throw conflict("a workshop needs the long slot " + Programme.LONG_SLOT);
             }
-            programmeDao.lockSlot(slot);
-            Long current = programmeDao.talkAt(room, slot);
             if (current != null) {
-                if (current == talkId) {
-                    return Programme.entry(room, slot, talkId); // D6: already there, nothing changes
-                }
                 throw conflict(room + " " + slot + " already has a talk");
             }
             if (programmeDao.scheduled(talkId)) {
@@ -67,7 +68,7 @@ public class ProgrammeService {
             throw conflict("the talk is already on the programme; take it out first");
         } catch (DataAccessException e) {
             if (LockTimeoutException.isLockNotAvailable(e)) {
-                throw new LockTimeoutException(e);
+                throw new LockTimeoutException("slot " + slot + " is busy, retry shortly", e);
             }
             throw e;
         }

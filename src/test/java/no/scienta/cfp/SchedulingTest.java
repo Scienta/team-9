@@ -204,6 +204,12 @@ class SchedulingTest {
         HttpResponse<String> withdrawn = send("POST", "/talks/" + talk + "/withdraw", "{\"speakerId\":" + speaker + "}");
         assertEquals(200, withdrawn.statusCode(), withdrawn.body());
         assertEquals(entry("R1", "S1", "09:00", "10:00", talk), get("R1", "S1", 200).body());
+
+        // D6 before D9: putting it in the same place again changes nothing, though it's no longer accepted and a
+        // co-speaker now clashes (review finding S1).
+        assertEquals(entry("R1", "S1", "09:00", "10:00", talk), put("R1", "S1", talk, 200).body());
+        // Anywhere else it's checked like any other talk.
+        put("R3", "S2", talk, 409);
     }
 
     // D1, D2, D3, D9: bad input answers 400 or 404 and changes nothing
@@ -302,6 +308,7 @@ class SchedulingTest {
             HttpResponse<String> res = send("PUT", "/programme/R1/S5", "{\"talkId\":" + talk + "}");
             assertEquals(503, res.statusCode(), res.body());
             assertEquals("1", res.headers().firstValue("Retry-After").orElse(null));
+            assertTrue(res.body().contains("\"message\":\"slot S5 is busy, retry shortly\""), res.body());
             holder.rollback();
         }
         get("R1", "S5", 404);

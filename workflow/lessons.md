@@ -92,3 +92,22 @@ change made so it can't recur silently (with the file changed). Number them `L1`
 - **Harness change:** a house convention for emails in `workflow/checklists/spec-questions.md`, so
   the next feature with an email defaults to the stricter rule.
 
+
+## L7: reviewers caught a no-op rejected by an earlier check, and thin Hurl coverage, in scheduling (tick ~105)
+
+- **What happened:** the first build of scheduling passed every local gate. All three reviewers
+  then found that a talk put on the programme, withdrawn, and put in the same place again answered
+  409, although D6 said a repeat is a 200 no-op and R8 says later changes leave the programme
+  alone: D9's check order ran the `ACCEPTED` check before the repeat. review-spec also found the
+  Hurl file covered 4 of D2's 9 kinds of bad `talkId` (all were in JUnit), and that its R5 request
+  also broke R7, so it would pass with the R5 check removed.
+- **Root cause:** the spec wrote the no-op (D6) and the check order (D9) as separate decisions and
+  never asked whether a resource can change between the first call and the repeat. The Hurl file
+  was written per status, which `check-hurl-statuses` accepts, not per case; L5 named this in the
+  review checklist, which is too late to write the requests.
+- **Should have been caught by:** `/spec` (the order) and `/build` step 1 (the Hurl file).
+- **Harness change:** `workflow/checklists/spec-questions.md` item 13 (order of checks vs. no-ops);
+  `.claude/skills/build/SKILL.md` step 1: one Hurl request per case a decision lists, and a rule's
+  request must not break another rule too. `workflow/bin/check-hurl-statuses` now says which
+  statuses it exempts instead of listing them as covered. Fixed with a test-first regression in
+  `SchedulingTest#laterChangesLeaveTheProgramme` (failed with 409 before the fix) and Hurl "D6".

@@ -20,6 +20,10 @@ At the end of every numbered step below, record what happened with
 - `examples/<slug>.hurl`: a request per rule and per error status, each with a comment naming the
   rule or decision (`# R2:` / `# D3:`). Unique emails (`{{newUuid}}`) so it can run repeatedly
   against production. It must leave production data valid.
+- In the Hurl file, **one request per case listed in a decision**, not per status: a decision
+  naming five kinds of bad `talkId` gets five requests (`bin/verify` runs only the Hurl file). And a
+  request that tests one rule must not break any other rule too, or it passes with that rule's
+  check removed (lessons.md L7).
 - Run them and see them fail for the right reason (missing endpoint or wrong value, not a compile
   error elsewhere).
 

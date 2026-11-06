@@ -73,6 +73,31 @@ PUT {{base_url}}/talks/{{pair_talk}}/status
 { "status": "ACCEPTED" }
 HTTP 200
 
+# Alan's accepted talk: shares no speaker with anyone, so only R5 can reject it
+POST {{base_url}}/speakers
+{ "name": "Alan Scheduled", "email": "alan-{{newUuid}}@example.com" }
+HTTP 201
+[Captures]
+alan: jsonpath "$.id"
+
+POST {{base_url}}/talks
+{ "title": "Alan's talk", "format": "PRESENTATION", "level": "BEGINNER", "speakerId": {{alan}} }
+HTTP 201
+[Captures]
+alan_talk: jsonpath "$.id"
+
+PUT {{base_url}}/talks/{{alan_talk}}/ratings/1
+{ "score": 4 }
+HTTP 200
+
+PUT {{base_url}}/talks/{{alan_talk}}/ratings/2
+{ "score": 4 }
+HTTP 200
+
+PUT {{base_url}}/talks/{{alan_talk}}/status
+{ "status": "ACCEPTED" }
+HTTP 200
+
 # A talk that isn't accepted
 POST {{base_url}}/talks
 { "title": "Still submitted", "format": "PRESENTATION", "level": "BEGINNER", "speakerId": {{ada}} }
@@ -112,7 +137,7 @@ HTTP 409
 
 # R5: one talk per room and slot
 PUT {{base_url}}/programme/R3/S1
-{ "talkId": {{pair_talk}} }
+{ "talkId": {{alan_talk}} }
 HTTP 409
 
 # R7: Ada co-speaks on the pair talk and already speaks in S1
@@ -167,7 +192,31 @@ PUT {{base_url}}/programme/R3/S2
 HTTP 400
 
 PUT {{base_url}}/programme/R3/S2
+{ "talkId": 1.0 }
+HTTP 400
+
+PUT {{base_url}}/programme/R3/S2
+{ "talkId": null }
+HTTP 400
+
+PUT {{base_url}}/programme/R3/S2
+{ "talkId": true }
+HTTP 400
+
+PUT {{base_url}}/programme/R3/S2
+{ "talkId": 0 }
+HTTP 400
+
+PUT {{base_url}}/programme/R3/S2
+{ "talkId": -1 }
+HTTP 400
+
+PUT {{base_url}}/programme/R3/S2
 { }
+HTTP 400
+
+PUT {{base_url}}/programme/R3/S2
+Content-Type: application/json
 HTTP 400
 
 PUT {{base_url}}/programme/R3/S2
@@ -204,6 +253,13 @@ POST {{base_url}}/talks/{{ada_talk}}/withdraw
 HTTP 200
 
 GET {{base_url}}/programme/R3/S2
+HTTP 200
+[Asserts]
+jsonpath "$.talkId" == {{ada_talk}}
+
+# D6: putting it in the same place again still changes nothing, though it's withdrawn now
+PUT {{base_url}}/programme/R3/S2
+{ "talkId": {{ada_talk}} }
 HTTP 200
 [Asserts]
 jsonpath "$.talkId" == {{ada_talk}}
