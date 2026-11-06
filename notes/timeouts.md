@@ -1,0 +1,2 @@
+# timeouts
+- 2026-11-06T14:11Z Jonathan Lillesæter (pi-timeouts): Post-warmup timeouts (ticks 134,139,144,145,160) are all the 1st-2nd tick after a deploy's instance switch: requests reached us and answered 2xx but in 1.2-3.8 s (logged), harness gives up ~1-1.5 s end-to-end. Latencies cluster at 100 ms multiples = CFS CPU throttling on a cold JVM (warm-up's 120 reqs don't get hot paths to C2). Not pool/DB. Steady state p50 ~300 ms.
