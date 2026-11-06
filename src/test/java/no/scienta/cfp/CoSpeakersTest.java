@@ -301,8 +301,11 @@ class CoSpeakersTest {
                 assertTrue(body.get("path").asText().startsWith("/talks/" + talk + "/co-speakers/"));
                 assertNotNull(body.get("timestamp"));
             }
+            // lock_timeout applies to each lock wait separately. The first waiter waits on the holder
+            // (<= 2 s); the second first queues for the row's tuple lock behind it (<= 2 s), then waits
+            // on the holder (<= 2 s). Worst case is therefore ~2 x lock_timeout, plus slack for CI.
             long millis = (System.nanoTime() - start) / 1_000_000;
-            assertTrue(millis >= 1900 && millis < 4000, "answered after " + millis + " ms");
+            assertTrue(millis >= 1900 && millis < 5500, "answered after " + millis + " ms");
             assertEquals(Arrays.asList(kept), memberRows(talk));
             holder.rollback();
         }
