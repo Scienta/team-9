@@ -101,9 +101,14 @@ class PooledIsolationTest {
 
     private final HttpClient http = HttpClient.newHttpClient();
 
+    @Autowired
+    DataSource dataSource;
+
     @Test
     void theDatabaseReallyDefaultsToRepeatableRead() {
         assertEquals("repeatable read", jdbc.queryForObject("SHOW default_transaction_isolation", String.class));
+        // The simulation is in place: otherwise noSessionLevelIsolationSet would pass trivially (review finding E3).
+        assertTrue(Proxy.isProxyClass(dataSource.getClass()), dataSource.getClass().getName());
     }
 
     // A session-level SET runs outside the transaction and, through the pooler, on someone else's backend (AGENTS.md):
@@ -214,6 +219,37 @@ class PooledIsolationTest {
             assertEquals(1, count(sent, 200), "round " + round);
             String status = jdbc.queryForObject("SELECT status FROM talk WHERE id = ?", String.class, talk);
             assertTrue(status.equals("ACCEPTED") || status.equals("REJECTED"), status);
+        }
+    }
+
+    // submission-cap-cr: a speaker's load (own talks and co-speaking) stays at 3 when a submission and a co-speaker
+    // invitation arrive at once (review finding E1)
+    @Test
+    void submissionAndCoSpeakingRaceNeverExceedTheLoad() throws Exception {
+        for (int round = 0; round < ROUNDS; round++) {
+            long speaker = speaker();
+            talk(speaker, "PRESENTATION");
+            talk(speaker, "PRESENTATION");
+            List<Long> others = new ArrayList<>();
+            for (int i = 0; i < 3; i++) {
+                others.add(talk(speaker(), "PRESENTATION"));
+            }
+            List<CompletableFuture<HttpResponse<String>>> sent = new ArrayList<>();
+            for (int i = 0; i < 3; i++) {
+                sent.add(async("POST", "/talks", "{\"title\":\"Mine " + i + "\",\"format\":\"PRESENTATION\","
+                        + "\"level\":\"BEGINNER\",\"speakerId\":" + speaker + "}"));
+                sent.add(async("PUT", "/talks/" + others.get(i) + "/co-speakers/" + speaker, null));
+            }
+            int ok = 0;
+            for (CompletableFuture<HttpResponse<String>> f : sent) {
+                HttpResponse<String> res = f.join();
+                assertTrue(res.statusCode() < 500, res.statusCode() + " " + res.body());
+                ok += res.statusCode() < 300 ? 1 : 0;
+            }
+            assertEquals(1, ok, "round " + round);
+            int load = jdbc.queryForObject("SELECT count(*) FROM talk WHERE speaker_id = ?", Integer.class, speaker)
+                    + jdbc.queryForObject("SELECT count(*) FROM talk_co_speaker WHERE speaker_id = ?", Integer.class, speaker);
+            assertEquals(3, load, "round " + round);
         }
     }
 

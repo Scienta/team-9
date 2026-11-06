@@ -314,8 +314,11 @@ change made so it can't recur silently (with the file changed). Number them `L1`
   as each transaction's first statement (DEFAULT means READ COMMITTED). `PooledIsolationTest`
   reproduces production (database default REPEATABLE READ, `setTransactionIsolation` dropped) and
   rushes the workshop seats, one speaker in a slot, one talk per place, the 3-talk cap, the
-  2 co-speakers and simultaneous decisions: before the fix 23 of 20 seats, 3 talks of one speaker
-  in a slot, 10 of 3 talks and 5 of 2 co-speakers got through, and a decision answered 500. It also
+  2 co-speakers, a submission racing a co-speaker invitation, and simultaneous decisions: before the
+  fix 23 of 20 seats, 3 talks of one speaker in a slot, 10 of 3 talks, 5 of 2 co-speakers and a load
+  of 8 of 3 got through, and a decision answered 500. review-edge confirmed the mechanism on a real
+  pgbouncer in transaction mode: with the driver's SET and Spring's reset, 39 of 200 transactions ran
+  at REPEATABLE READ (why the checks failed only now and then); with the fix, 0. It also
   checks the driver is never asked for a session-level isolation `SET` (4 per two requests before).
   `workflow/checklists/spec-questions.md` item 11 and `review.md` ask for every new lock-guarded
   limit to have a rush there. `REVIEW.md` section 4.
