@@ -27,8 +27,8 @@ Status: in-review
 |---|---|---|
 | `POST /workshops/{id}/registrations` | 201 | registered; body is the `Registration` |
 | | 400 | body missing or not JSON; `name` missing, null, blank, not a JSON string (D9) or containing a NUL character; `email` missing, null, blank, not a JSON string (D9), not an email or without a dot in its domain (D1); non-numeric `{id}`. Checked before the workshop is looked up (D10). |
-| | 404 | no talk with that id, or the talk isn't a `WORKSHOP` (D2) |
-| | 409 | the workshop isn't `ACCEPTED` (D3); 20 registrations already (D4); this email (any case) is already registered for it (D5) |
+| | 404 | no talk with that id (D2) |
+| | 409 | the talk isn't a `WORKSHOP` (D2); the workshop isn't `ACCEPTED` (D3); 20 registrations already (D4); this email (any case) is already registered for it (D5) |
 | | 503 | the workshop row stayed locked for 2 s (`Retry-After: 1`, as co-speakers). Test: `#lockedWorkshopAnswers503AndChangesNothing` |
 | `GET /workshops/{id}/registrations` | 200 | the list, oldest first; `[]` when none; for any status of the workshop (D6) |
 | | 400 | non-numeric `{id}` |
@@ -44,9 +44,10 @@ No existing response changes: `Talk` gets no new field.
 - **D1** What's a valid email? → Speaker registration's check (`@NotBlank @Email`) **plus a dot in
   the domain**, so `a@b` and `a@localhost` are 400 (`mail.example.co.uk` is fine). Overridden in
   review: the first answer was "exactly as speakers", which accepts `a@b`. `CONFIRMED by Espen Myklevoll`
-- **D2** A talk that exists but isn't a `WORKSHOP` → 404 on both endpoints: the path names a
-  workshop, and there is no workshop with that id (house convention: 404 for a path id that
-  doesn't exist). `CONFIRMED by Espen Myklevoll`
+- **D2** A talk that exists but isn't a `WORKSHOP` → **409 on POST** (the talk exists, but only
+  workshops take registrations, the same rule as D3), and 404 on GET (it has no registration list).
+  First answer was 404 on both; the harness's workshop-registration/check-2 rejected the 404 on POST
+  at tick 107 (lessons.md L8). `CONFIRMED by Espen Myklevoll` (as 404; changed to 409 after the FAULTY check)
 - **D3** A workshop that isn't `ACCEPTED` (`SUBMITTED`, `WAITLISTED`, `REJECTED`, `WITHDRAWN`) →
   409: the request is well-formed and the state forbids it (house convention). `CONFIRMED by Espen Myklevoll`
 - **D4** The 21st registration → 409, nothing stored (house convention: a limit reached). `CONFIRMED by Espen Myklevoll`
