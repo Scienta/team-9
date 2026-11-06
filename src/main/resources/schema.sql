@@ -67,3 +67,17 @@ CREATE TABLE IF NOT EXISTS workshop_registration (
     registered_at BIGINT NOT NULL                   -- epoch millis (UTC)
 );
 CREATE UNIQUE INDEX IF NOT EXISTS ux_workshop_registration_email ON workshop_registration (talk_id, lower(email));
+
+-- Scheduling (workflow/specs/scheduling.md). Rooms, slots and their times are fixed in code
+-- (Programme); programme_slot has one row per slot so a PUT can lock its slot (R7, R9).
+CREATE TABLE IF NOT EXISTS programme_slot (
+    slot TEXT PRIMARY KEY
+);
+INSERT INTO programme_slot (slot) VALUES ('S1'), ('S2'), ('S3'), ('S4'), ('S5') ON CONFLICT DO NOTHING;
+CREATE TABLE IF NOT EXISTS programme (
+    room    TEXT NOT NULL,
+    slot    TEXT NOT NULL REFERENCES programme_slot(slot),
+    talk_id INTEGER NOT NULL REFERENCES talk(id),
+    PRIMARY KEY (room, slot)                        -- one talk per room and slot (R5)
+);
+CREATE UNIQUE INDEX IF NOT EXISTS ux_programme_talk ON programme (talk_id);   -- on the programme once (R6)
