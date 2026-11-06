@@ -43,6 +43,21 @@ public class SpeakerDao {
         return jdbc.update("UPDATE speaker SET name = ?, email = ?, bio = ? WHERE id = ?", name, email, bio, id);
     }
 
+    /** Registered speakers who are the main speaker of at least one talk, in one query (/admin/stats). */
+    public int countWithTalks() {
+        return jdbc.queryForObject(
+                "SELECT COUNT(*) FROM speaker s WHERE EXISTS (SELECT 1 FROM talk t WHERE t.speaker_id = s.id)", Integer.class);
+    }
+
+    /** Every speaker's name by id, in one query (the CSV export, instead of one lookup per talk). */
+    public Map<Long, String> names() {
+        Map<Long, String> names = new java.util.HashMap<>();
+        jdbc.query("SELECT id, name FROM speaker", rs -> {
+            names.put(rs.getLong("id"), rs.getString("name"));
+        });
+        return names;
+    }
+
     public int count() {
         return jdbc.queryForObject("SELECT COUNT(*) FROM speaker", Integer.class);
     }

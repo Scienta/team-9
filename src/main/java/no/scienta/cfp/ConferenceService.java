@@ -1,7 +1,5 @@
 package no.scienta.cfp;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -73,6 +71,11 @@ public class ConferenceService {
         speaker.put("email", form.getEmail());
         speaker.put("bio", form.getBio());
         return speaker;
+    }
+
+    /** Every speaker's name by id, for the CSV export. */
+    public Map<Long, String> speakerNames() {
+        return speakerDao.names();
     }
 
     public Map<String, Object> getSpeaker(long id) {
@@ -221,7 +224,7 @@ public class ConferenceService {
         if (talk == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "talk not found");
         }
-        addRatings(talk);
+        talk.coSpeakerIds = talkDao.coSpeakerIds(id);
         return talk;
     }
 
@@ -230,9 +233,7 @@ public class ConferenceService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "speaker not found");
         }
         List<TalkDto> talks = talkDao.findBySpeaker(speakerId);
-        for (TalkDto t : talks) {
-            addRatings(t);
-        }
+        addCoSpeakers(talks);
         return talks;
     }
 
@@ -241,9 +242,7 @@ public class ConferenceService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "sort must be 'rating'");
         }
         List<TalkDto> talks = speakerId == null ? talkDao.findAll() : talkDao.findBySpeaker(speakerId);
-        for (TalkDto t : talks) {
-            addRatings(t);
-        }
+        addCoSpeakers(talks);
         if ("rating".equals(sort)) {
             List<TalkDto> rated = new ArrayList<>();
             List<TalkDto> unrated = new ArrayList<>();
@@ -271,19 +270,17 @@ public class ConferenceService {
         return talks;
     }
 
-    private void addRatings(TalkDto talk) {
-        talk.coSpeakerIds = talkDao.coSpeakerIds(talk.id);
-        Map<String, Object> stats = ratingDao.stats(talk.id);
-        int count = ((Number) stats.get("cnt")).intValue();
-        long total = ((Number) stats.get("total")).longValue();
-        talk.ratingCount = count;
-        talk.averageRating = count == 0 ? null : calculateAverage(total, count);
-    }
-
-    // 1 decimal, half up (4.25 -> 4.3)
-    private Double calculateAverage(long total, int count) {
-        return BigDecimal.valueOf(total).divide(BigDecimal.valueOf(count), 1, RoundingMode.HALF_UP).doubleValue();
-        // return Utils.roundRating((double) total / count);
+    // The rating count and average come with each talk from TalkDao's query; the co-speakers of a whole list come
+    // from one more query. Per-talk queries made GET /talks take 18-34 s at ~3600 talks (ListQueriesTest).
+    private void addCoSpeakers(List<TalkDto> talks) {
+        List<Long> ids = new ArrayList<>(talks.size());
+        for (TalkDto t : talks) {
+            ids.add(t.id);
+        }
+        Map<Long, List<Long>> coSpeakers = talkDao.coSpeakerIds(ids);
+        for (TalkDto t : talks) {
+            t.coSpeakerIds = coSpeakers.getOrDefault(t.id, new ArrayList<>());
+        }
     }
 
     /**
@@ -340,12 +337,13 @@ public class ConferenceService {
 
     // ---------------------------------------------------------------- statistics
 
+    // Several statements (talks, speaker counts), read from one snapshot so the numbers agree with each other.
+    @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
     public Map<String, Object> statistics() {
         List<TalkDto> talks = listTalks(null, null);
         Map<String, Integer> byFormat = new LinkedHashMap<>();
         Map<String, Integer> byLevel = new LinkedHashMap<>();
         Map<String, Integer> byStatus = new LinkedHashMap<>();
-        List<Long> speakersWithTalks = new ArrayList<>();
         int minutes = 0;
         double ratingSum = 0;
         int rated = 0;
@@ -353,9 +351,6 @@ public class ConferenceService {
             byFormat.put(t.format, byFormat.getOrDefault(t.format, 0) + 1);
             byLevel.put(t.level, byLevel.getOrDefault(t.level, 0) + 1);
             byStatus.put(t.status, byStatus.getOrDefault(t.status, 0) + 1);
-            if (!speakersWithTalks.contains(t.speakerId) && speakerDao.findById(t.speakerId) != null) {
-                speakersWithTalks.add(t.speakerId);
-            }
             minutes += t.durationMinutes;
             if (t.averageRating != null) {
                 ratingSum += t.averageRating;
@@ -364,7 +359,7 @@ public class ConferenceService {
         }
         Map<String, Object> stats = new LinkedHashMap<>();
         stats.put("speakers", speakerDao.count());
-        stats.put("speakersWithTalks", speakersWithTalks.size());
+        stats.put("speakersWithTalks", speakerDao.countWithTalks());
         stats.put("talks", talks.size());
         stats.put("byFormat", byFormat);
         stats.put("byLevel", byLevel);
