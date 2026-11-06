@@ -1,7 +1,11 @@
 # One feature, one worktree
 
-An agent working on a feature works in its own git worktree on `feat/<slug>`, never by switching
-branches in a checkout a person is using. Two agents (or an agent and a person) in the same checkout
+An agent changing anything in this repo (a feature, a fix, a retro, or workflow and agent
+config, which is **not** exempt) works in its own git worktree on its own branch (`feat/<slug>`,
+`fix/<slug>-<short>`, `chore/<topic>`), never by editing or switching branches in a checkout a
+person or another session is using. **Never commit on `main`, never push `main`, never merge a local
+`main` into anything** (lessons.md L4): everything reaches `main` through a PR. If
+`workflow/bin/check-main` fails, stop and tell the person. Two agents (or an agent and a person) in the same checkout
 mix unrelated, unreviewed changes into the same files, and a `git switch` pulls the floor out from
 under whoever else is there.
 

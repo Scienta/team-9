@@ -29,6 +29,7 @@ feedback="$("$h" "/api/teams/$team/feedback")"
 tick="$(jq -r '.tick' <<<"$feedback")"
 
 git fetch -q --prune origin 2>/dev/null || echo "(git fetch failed: branch states may be stale)" >&2
+"$root/workflow/bin/check-main" || echo "(local main has unreviewed commits: a person must sort that out first; see above)" >&2
 branches="$(git for-each-ref --format='%(refname:short)' 'refs/remotes/origin/feat/*' | sed 's#^origin/##')"
 open_prs="" merged_prs=""
 if command -v gh >/dev/null && gh auth status >/dev/null 2>&1; then
