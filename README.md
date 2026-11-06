@@ -137,6 +137,27 @@ Formats: `LIGHTNING`, `PRESENTATION`, `WORKSHOP`, `KEYNOTE`.
 mvn test
 ```
 
+### Mutation testing (PIT)
+
+Opt-in via the `mutation` profile; `./mvnw package` and the deploy are unaffected.
+
+```
+./mvnw -Pmutation test-compile org.pitest:pitest-maven:mutationCoverage
+# fail the build below a kill rate:
+./mvnw -Pmutation test-compile org.pitest:pitest-maven:mutationCoverage -Dpit.mutationThreshold=60
+```
+
+Report: `target/pit-reports/index.html`. Runs are incremental (history in `target/pit-history/`);
+`./mvnw clean` for a full run. `-Dpit.threads=N` sets the number of parallel minions; each starts its
+own Testcontainers Postgres, so it's safe to run in several worktrees at once.
+
+With Podman instead of Docker:
+
+```
+export DOCKER_HOST=unix://$(podman machine inspect --format '{{.ConnectionInfo.PodmanSocket.Path}}')
+export TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/run/podman/podman.sock
+```
+
 ## Deploy
 
 Push to `master`, Jenkins builds and deploys to the test server. Ask Kjetil for access.

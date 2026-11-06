@@ -22,6 +22,9 @@ Rules:
 - Add or update tests that would fail without the change. Run ./mvnw -B -q test inside the worktree
   (Testcontainers needs a Docker socket; on this team's machines Podman provides it) and report the
   real result.
+- If you changed `src/main/java`, run mutation testing as `.claude/rules/mutation-testing.md`
+  describes (read it: pi doesn't load it) and report the `>> Generated … Killed …` line. Kill
+  survivors with tests written from the spec; list any you couldn't kill and why.
 - Never claim features, commit, merge, push, deploy, remove worktrees, or read or print credentials
   (.fagdag/harness-token).
 - Do not modify .fagdag/, workflow/watch_specs.py, .pi/ or .claude/. In `.workflow-state/` you may only

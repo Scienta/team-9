@@ -29,6 +29,8 @@ anything that can race.
 
 All must pass, and you must have seen them pass:
 - `./mvnw -q package` (all tests, not just yours).
+- Mutation testing at 100 % killed, as in `.claude/rules/mutation-testing.md`. Kill survivors with
+  tests from the spec, not by pinning what the code happens to return.
 - App running locally (`docker compose up -d`, `java -jar target/cfp.jar &`), then
   `HURL=workflow/bin/hurl examples/run.sh` (every Hurl file, not just yours). Stop the app after.
 
@@ -51,6 +53,6 @@ Push and open a PR with `gh pr create`, titled `feat(<slug>): <feature name>`. T
 - **Rules → tests:** a table of each rule and decision and the test(s) that prove it.
 - **Review findings:** each reviewer's findings and what was done (fixed with test X, or rejected
   because Y), and the lessons added.
-- **Local evidence:** the test and Hurl summary lines you saw.
+- **Local evidence:** the test, PIT (`>> Generated … Killed …`) and Hurl summary lines you saw.
 
 Update the team spec's `Status:` to `in-review`. Tell the user the PR URL and the decisions to confirm.

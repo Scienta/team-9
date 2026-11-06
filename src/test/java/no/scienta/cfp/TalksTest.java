@@ -74,6 +74,15 @@ class TalksTest {
         assertTrue(res.body().contains("\"durationMinutes\":120"), res.body());
     }
 
+    @Test
+    void aTalkNeedsARegisteredSpeaker() throws Exception {
+        long unknown = Long.parseLong(newSpeaker()) + 1000;
+        HttpResponse<String> res = http.send(request("POST", "/talks",
+                "{\"title\":\"T\",\"format\":\"PRESENTATION\",\"level\":\"BEGINNER\",\"speakerId\":" + unknown + "}"),
+                HttpResponse.BodyHandlers.ofString());
+        assertEquals(400, res.statusCode(), res.body());
+    }
+
     private String newSpeaker() throws Exception {
         HttpResponse<String> res = http.send(request("POST", "/speakers",
                 "{\"name\":\"Grace Hopper\",\"email\":\"grace-" + UUID.randomUUID() + "@example.com\"}"),
