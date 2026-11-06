@@ -2,7 +2,7 @@
 
 Feature request: [`specs/ratings-cr.md`](../../specs/ratings-cr.md), version 1. Changes
 [`specs/ratings.md`](../../specs/ratings.md); everything else about ratings stays as it is.
-Status: draft
+Status: in-review
 
 ## Rules
 
