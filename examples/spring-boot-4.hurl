@@ -75,6 +75,12 @@ HTTP 200
 jsonpath "$.averageRating" == 4.5
 jsonpath "$.ratingCount" == 2
 
+# R5: an unknown speaker with a trailing slash is the same 404
+GET {{base_url}}/speakers/0/
+HTTP 404
+[Asserts]
+jsonpath "$.message" == "speaker not found"
+
 # D5, D7: errors keep Boot's shape, our message, and the charset
 GET {{base_url}}/speakers/0
 HTTP 404

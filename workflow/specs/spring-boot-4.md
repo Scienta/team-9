@@ -27,7 +27,17 @@ Status: in-review
 
 ## API
 
-No new or changed endpoints. `GET /actuator/info`: 200 `{"versions":{"java":…,"springBoot":"4.…","springFramework":"7.…"}}`.
+No new or changed endpoints. The ones this feature is checked through:
+
+| Method and path | Status | When |
+|---|---|---|
+| `GET /actuator/info` | 200 | always: `{"versions":{"java":…,"springBoot":"4.…","springFramework":"7.…"}}` |
+| `GET /health` | 200 | the database answers within 5 s (deploy contract) |
+| | 503 | it doesn't |
+| `GET /speakers/{id}/` (and every other path with a trailing slash, R5) | 200 | as without the slash |
+| | 404 | unknown speaker, with the same body as without the slash |
+
+Every other endpoint answers exactly as its own spec says (R4).
 
 ## Decisions
 
