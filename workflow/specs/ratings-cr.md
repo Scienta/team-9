@@ -40,26 +40,26 @@ decimal comma (`4,25`), and `/admin/stats` (D2).
 
 - **D1** How a 2-decimal average is written in JSON → as a JSON number with no trailing zeros:
   `4.25`, `4.5`, `4.0`, never `4.50`. Rounding to 2 decimals fixes the value, and JSON numbers
-  compare by value; this is how `averageRating` is written today. `UNCONFIRMED`
+  compare by value; this is how `averageRating` is written today. `CONFIRMED by Henrik Otgard`
 - **D2** `/admin/stats`'s `averageRating` (the mean of the talks' averages, an admin report outside
   the specs) → the mean of the new per-talk averages, still rounded to 1 decimal half up as today:
-  "everything else stays as it is", and the request only changes the per-talk average. `UNCONFIRMED`
+  "everything else stays as it is", and the request only changes the per-talk average. `CONFIRMED by Henrik Otgard`
 - **D3** The CSV export's rating column → the new per-talk average, decimal comma, no trailing zeros
-  (`4,25`, `4,5`), as today's column follows `averageRating`. `UNCONFIRMED`
+  (`4,25`, `4,5`), as today's column follows `averageRating`. `CONFIRMED by Henrik Otgard`
 - **D4** The rounding is done on the exact fraction (sum / count with integer sum and count), not on
   a floating-point mean, so a true tie like 25/8 = 3.125 always rounds to the even neighbour and
   10/3 = 3.333… to 3.33. A tie at the third decimal needs a divisor with only 2s and 5s beyond 2 and 4
   (8, 16, 40, …), so it can only happen with 10, 18, 42, … ratings (after the trim); 43/40 = 1.075 is
   the case a floating-point mean gets wrong (1.07). `/admin/stats` sums the talk averages exactly
-  too. `UNCONFIRMED`
+  too. `CONFIRMED by Henrik Otgard`
 - **D5** "Ties" in the ranking are talks whose **rounded** averages are equal (4.333… and 4.33 tie),
   then the talk with more reviewers (`ratingCount`, every reviewer) first, then the oldest: the
-  ratings spec's tie-breaks, applied to the new average. `UNCONFIRMED`
+  ratings spec's tie-breaks, applied to the new average. `CONFIRMED by Henrik Otgard`
 - **D6** Replacing a rating (the same reviewer again) can move which score is highest or lowest; the
-  average is always computed from the current scores, so the trimmed pair follows. `UNCONFIRMED`
+  average is always computed from the current scores, so the trimmed pair follows. `CONFIRMED by Henrik Otgard`
 - **D7** No other ratings behaviour changes: the 1-5 score, positive reviewer ids, one rating per
   reviewer, `ratedAtDisplay`, the acceptance rule of 2 different reviewers, and every status code.
-  `UNCONFIRMED`
+  `CONFIRMED by Henrik Otgard`
 
 Checklist items with nothing to decide: unknown ids, malformed input, idempotency, undo, state,
 who may do it (no change to any endpoint's input); joins (no new join: the count, sum, highest and
