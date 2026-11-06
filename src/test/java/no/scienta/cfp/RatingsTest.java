@@ -21,7 +21,7 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 
 /**
- * Ratings: a reviewer has one 1-5 rating per talk, averages round half up to one decimal, and sort=rating ranks rated
+ * Ratings: a reviewer has one 1-5 rating per talk, averages round to 2 decimals (ratings-cr), and sort=rating ranks rated
  * talks first. Runs the real app on a random port with a throwaway database. Reads JSON with regexes rather than
  * Jackson, so it compiles unchanged across the Jackson 2 -> 3 move in Spring Boot 4.
  */

@@ -29,7 +29,10 @@ from (`lessons.md#L<n>`).
     sort, the ratings average?
 11. **Concurrency.** Two people doing conflicting things at once: what stops an illegal state?
     (Row locks or conditional writes: advisory locks are not available.)
-12. **Formats.** Exact string formats for any new timestamps or numbers.
+12. **Formats.** Exact string formats for any new timestamps or numbers. For **rounding**: is it done
+    on the exact value (integer fraction, `BigDecimal`), never a `double` sum or mean? Test it with a
+    tie that isn't exact in binary (43/40 = 1.075, not k/8), and every sort or tie rule on rounded
+    values with a pair that ties only after rounding (lessons.md L16).
 13. **Order of checks vs. no-ops.** If a decision makes a repeat a no-op (200, nothing changes),
     say where it sits in the check order, and check every later state change against it: can the
     resource change after the first call (withdrawn, new members) so a later check rejects the

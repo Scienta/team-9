@@ -234,3 +234,22 @@ change made so it can't recur silently (with the file changed). Number them `L1`
   with `[]` before), pre-clearing DELETEs in `examples/programme-export.hurl`,
   `#fullProgrammeTakesAFixedNumberOfQueries` (fails at 17 statements with a per-row query), and a
   `Content-Disposition` assert in JUnit and Hurl.
+
+## L16: reviewers caught a floating-point stats mean and tests that couldn't tell exact from float rounding (ratings-cr, build)
+
+- **What happened:** the first build of ratings-cr passed every local gate. The reviewers then found:
+  `/admin/stats` summed the talk averages as `double`, so a true tie like (1.43 + 1.67) / 2 = 1.55
+  became 1.5499999999999998 and showed 1.5, not 1.6 (on main too, but 2-decimal averages make it
+  far more common, and it made our stats test depend on test order); every half-even test case
+  divided by 8, which is exact in binary, so a floating-point implementation would have passed
+  (D4); and the only ranking tie was 5.0 vs 5.0, equal before rounding too, so sorting on the
+  unrounded value would have passed (D5).
+- **Root cause:** the tests used the spec's own examples (3.125, 3.375), which happen to be the
+  easy cases; nothing asked for a value that tells exact rounding from float rounding, or a tie
+  that only rounding creates.
+- **Should have been caught by:** `/spec` (D4 and D5 named the rule but not the case that proves it)
+  and `/build` step 1.
+- **Harness change:** `workflow/checklists/spec-questions.md` item 12 asks for exact rounding and the
+  two cases (a non-binary tie like 43/40 = 1.075, a pair that ties only after rounding). Fixed:
+  `/admin/stats` sums and divides as `BigDecimal` (`RatingsCrStatsTest` failed with 1.5 before);
+  `RatingsCrTest` and `examples/ratings-cr.hurl` have the 1.075 case and the 3.125 vs 3.1176 tie.

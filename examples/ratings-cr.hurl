@@ -271,6 +271,337 @@ HTTP 200
 jsonpath "$.averageRating" == 3.38
 jsonpath "$.ratingCount" == 10
 
+POST {{base_url}}/talks
+{ "title": "Talk fortieths", "format": "PRESENTATION", "level": "BEGINNER", "speakerId": {{c}} }
+HTTP 201
+[Captures]
+fortieths: jsonpath "$.id"
+
+PUT {{base_url}}/talks/{{fortieths}}/ratings/1
+{ "score": 1 }
+HTTP 200
+
+PUT {{base_url}}/talks/{{fortieths}}/ratings/2
+{ "score": 1 }
+HTTP 200
+
+PUT {{base_url}}/talks/{{fortieths}}/ratings/3
+{ "score": 1 }
+HTTP 200
+
+PUT {{base_url}}/talks/{{fortieths}}/ratings/4
+{ "score": 1 }
+HTTP 200
+
+PUT {{base_url}}/talks/{{fortieths}}/ratings/5
+{ "score": 1 }
+HTTP 200
+
+PUT {{base_url}}/talks/{{fortieths}}/ratings/6
+{ "score": 1 }
+HTTP 200
+
+PUT {{base_url}}/talks/{{fortieths}}/ratings/7
+{ "score": 1 }
+HTTP 200
+
+PUT {{base_url}}/talks/{{fortieths}}/ratings/8
+{ "score": 1 }
+HTTP 200
+
+PUT {{base_url}}/talks/{{fortieths}}/ratings/9
+{ "score": 1 }
+HTTP 200
+
+PUT {{base_url}}/talks/{{fortieths}}/ratings/10
+{ "score": 1 }
+HTTP 200
+
+PUT {{base_url}}/talks/{{fortieths}}/ratings/11
+{ "score": 1 }
+HTTP 200
+
+PUT {{base_url}}/talks/{{fortieths}}/ratings/12
+{ "score": 1 }
+HTTP 200
+
+PUT {{base_url}}/talks/{{fortieths}}/ratings/13
+{ "score": 1 }
+HTTP 200
+
+PUT {{base_url}}/talks/{{fortieths}}/ratings/14
+{ "score": 1 }
+HTTP 200
+
+PUT {{base_url}}/talks/{{fortieths}}/ratings/15
+{ "score": 1 }
+HTTP 200
+
+PUT {{base_url}}/talks/{{fortieths}}/ratings/16
+{ "score": 1 }
+HTTP 200
+
+PUT {{base_url}}/talks/{{fortieths}}/ratings/17
+{ "score": 1 }
+HTTP 200
+
+PUT {{base_url}}/talks/{{fortieths}}/ratings/18
+{ "score": 1 }
+HTTP 200
+
+PUT {{base_url}}/talks/{{fortieths}}/ratings/19
+{ "score": 1 }
+HTTP 200
+
+PUT {{base_url}}/talks/{{fortieths}}/ratings/20
+{ "score": 1 }
+HTTP 200
+
+PUT {{base_url}}/talks/{{fortieths}}/ratings/21
+{ "score": 1 }
+HTTP 200
+
+PUT {{base_url}}/talks/{{fortieths}}/ratings/22
+{ "score": 1 }
+HTTP 200
+
+PUT {{base_url}}/talks/{{fortieths}}/ratings/23
+{ "score": 1 }
+HTTP 200
+
+PUT {{base_url}}/talks/{{fortieths}}/ratings/24
+{ "score": 1 }
+HTTP 200
+
+PUT {{base_url}}/talks/{{fortieths}}/ratings/25
+{ "score": 1 }
+HTTP 200
+
+PUT {{base_url}}/talks/{{fortieths}}/ratings/26
+{ "score": 1 }
+HTTP 200
+
+PUT {{base_url}}/talks/{{fortieths}}/ratings/27
+{ "score": 1 }
+HTTP 200
+
+PUT {{base_url}}/talks/{{fortieths}}/ratings/28
+{ "score": 1 }
+HTTP 200
+
+PUT {{base_url}}/talks/{{fortieths}}/ratings/29
+{ "score": 1 }
+HTTP 200
+
+PUT {{base_url}}/talks/{{fortieths}}/ratings/30
+{ "score": 1 }
+HTTP 200
+
+PUT {{base_url}}/talks/{{fortieths}}/ratings/31
+{ "score": 1 }
+HTTP 200
+
+PUT {{base_url}}/talks/{{fortieths}}/ratings/32
+{ "score": 1 }
+HTTP 200
+
+PUT {{base_url}}/talks/{{fortieths}}/ratings/33
+{ "score": 1 }
+HTTP 200
+
+PUT {{base_url}}/talks/{{fortieths}}/ratings/34
+{ "score": 1 }
+HTTP 200
+
+PUT {{base_url}}/talks/{{fortieths}}/ratings/35
+{ "score": 1 }
+HTTP 200
+
+PUT {{base_url}}/talks/{{fortieths}}/ratings/36
+{ "score": 1 }
+HTTP 200
+
+PUT {{base_url}}/talks/{{fortieths}}/ratings/37
+{ "score": 1 }
+HTTP 200
+
+PUT {{base_url}}/talks/{{fortieths}}/ratings/38
+{ "score": 1 }
+HTTP 200
+
+PUT {{base_url}}/talks/{{fortieths}}/ratings/39
+{ "score": 2 }
+HTTP 200
+
+PUT {{base_url}}/talks/{{fortieths}}/ratings/40
+{ "score": 2 }
+HTTP 200
+
+PUT {{base_url}}/talks/{{fortieths}}/ratings/41
+{ "score": 2 }
+HTTP 200
+
+PUT {{base_url}}/talks/{{fortieths}}/ratings/42
+{ "score": 2 }
+HTTP 200
+
+# D4: 42 ratings, a 1 and a 2 left out, the other 40 sum to 43: exactly 1.075 -> 1.08 (a floating-point mean gives 1.07)
+GET {{base_url}}/talks/{{fortieths}}
+HTTP 200
+[Asserts]
+jsonpath "$.averageRating" == 1.08
+jsonpath "$.ratingCount" == 42
+
+POST {{base_url}}/speakers
+{ "name": "Rated e", "email": "e-{{newUuid}}@example.com" }
+HTTP 201
+[Captures]
+e: jsonpath "$.id"
+
+POST {{base_url}}/talks
+{ "title": "Talk eighths", "format": "PRESENTATION", "level": "BEGINNER", "speakerId": {{e}} }
+HTTP 201
+[Captures]
+eighths: jsonpath "$.id"
+
+POST {{base_url}}/talks
+{ "title": "Talk seventeenths", "format": "PRESENTATION", "level": "BEGINNER", "speakerId": {{e}} }
+HTTP 201
+[Captures]
+seventeenths: jsonpath "$.id"
+
+PUT {{base_url}}/talks/{{eighths}}/ratings/1
+{ "score": 1 }
+HTTP 200
+
+PUT {{base_url}}/talks/{{eighths}}/ratings/2
+{ "score": 5 }
+HTTP 200
+
+PUT {{base_url}}/talks/{{eighths}}/ratings/3
+{ "score": 3 }
+HTTP 200
+
+PUT {{base_url}}/talks/{{eighths}}/ratings/4
+{ "score": 3 }
+HTTP 200
+
+PUT {{base_url}}/talks/{{eighths}}/ratings/5
+{ "score": 3 }
+HTTP 200
+
+PUT {{base_url}}/talks/{{eighths}}/ratings/6
+{ "score": 3 }
+HTTP 200
+
+PUT {{base_url}}/talks/{{eighths}}/ratings/7
+{ "score": 3 }
+HTTP 200
+
+PUT {{base_url}}/talks/{{eighths}}/ratings/8
+{ "score": 3 }
+HTTP 200
+
+PUT {{base_url}}/talks/{{eighths}}/ratings/9
+{ "score": 3 }
+HTTP 200
+
+PUT {{base_url}}/talks/{{eighths}}/ratings/10
+{ "score": 4 }
+HTTP 200
+
+PUT {{base_url}}/talks/{{seventeenths}}/ratings/1
+{ "score": 1 }
+HTTP 200
+
+PUT {{base_url}}/talks/{{seventeenths}}/ratings/2
+{ "score": 5 }
+HTTP 200
+
+PUT {{base_url}}/talks/{{seventeenths}}/ratings/3
+{ "score": 3 }
+HTTP 200
+
+PUT {{base_url}}/talks/{{seventeenths}}/ratings/4
+{ "score": 3 }
+HTTP 200
+
+PUT {{base_url}}/talks/{{seventeenths}}/ratings/5
+{ "score": 3 }
+HTTP 200
+
+PUT {{base_url}}/talks/{{seventeenths}}/ratings/6
+{ "score": 3 }
+HTTP 200
+
+PUT {{base_url}}/talks/{{seventeenths}}/ratings/7
+{ "score": 3 }
+HTTP 200
+
+PUT {{base_url}}/talks/{{seventeenths}}/ratings/8
+{ "score": 3 }
+HTTP 200
+
+PUT {{base_url}}/talks/{{seventeenths}}/ratings/9
+{ "score": 3 }
+HTTP 200
+
+PUT {{base_url}}/talks/{{seventeenths}}/ratings/10
+{ "score": 3 }
+HTTP 200
+
+PUT {{base_url}}/talks/{{seventeenths}}/ratings/11
+{ "score": 3 }
+HTTP 200
+
+PUT {{base_url}}/talks/{{seventeenths}}/ratings/12
+{ "score": 3 }
+HTTP 200
+
+PUT {{base_url}}/talks/{{seventeenths}}/ratings/13
+{ "score": 3 }
+HTTP 200
+
+PUT {{base_url}}/talks/{{seventeenths}}/ratings/14
+{ "score": 3 }
+HTTP 200
+
+PUT {{base_url}}/talks/{{seventeenths}}/ratings/15
+{ "score": 3 }
+HTTP 200
+
+PUT {{base_url}}/talks/{{seventeenths}}/ratings/16
+{ "score": 3 }
+HTTP 200
+
+PUT {{base_url}}/talks/{{seventeenths}}/ratings/17
+{ "score": 3 }
+HTTP 200
+
+PUT {{base_url}}/talks/{{seventeenths}}/ratings/18
+{ "score": 3 }
+HTTP 200
+
+PUT {{base_url}}/talks/{{seventeenths}}/ratings/19
+{ "score": 5 }
+HTTP 200
+
+# D5: 25/8 = 3.125 and 53/17 = 3.1176... both show 3.12, so they tie and 19 reviewers beat 10;
+# sorting on the exact values would put 3.125 first
+GET {{base_url}}/talks
+[Query]
+sort: rating
+speakerId: {{e}}
+HTTP 200
+[Asserts]
+jsonpath "$" count == 2
+jsonpath "$[0].id" == {{seventeenths}}
+jsonpath "$[0].averageRating" == 3.12
+jsonpath "$[0].ratingCount" == 19
+jsonpath "$[1].id" == {{eighths}}
+jsonpath "$[1].averageRating" == 3.12
+jsonpath "$[1].ratingCount" == 10
+
 POST {{base_url}}/speakers
 { "name": "Rated d", "email": "d-{{newUuid}}@example.com" }
 HTTP 201

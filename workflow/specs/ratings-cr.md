@@ -18,7 +18,8 @@ Status: draft
   Tests: `#fiveOrMoreRatingsDropOneHighestAndOneLowest`, Hurl "R4".
 - **R5** `GET /talks?sort=rating` ranks by the new, rounded average; ties and unrated talks as
   before (more reviewers first, then oldest first; unrated last). Tests: `#rankingUsesTheTrimmedAverage`, Hurl "R5".
-- **R6** A talk with no ratings still has no average (`null`) and `ratingCount` 0. Tests: Hurl "R6".
+- **R6** A talk with no ratings still has no average (`null`) and `ratingCount` 0.
+  Tests: `#unratedHasNoAverageAndNumbersHaveNoTrailingZeros`, Hurl "R6".
 
 ## API
 
@@ -47,7 +48,10 @@ decimal comma (`4,25`), and `/admin/stats` (D2).
   (`4,25`, `4,5`), as today's column follows `averageRating`. `UNCONFIRMED`
 - **D4** The rounding is done on the exact fraction (sum / count with integer sum and count), not on
   a floating-point mean, so a true tie like 25/8 = 3.125 always rounds to the even neighbour and
-  10/3 = 3.333… to 3.33. `UNCONFIRMED`
+  10/3 = 3.333… to 3.33. A tie at the third decimal needs a divisor with only 2s and 5s beyond 2 and 4
+  (8, 16, 40, …), so it can only happen with 10, 18, 42, … ratings (after the trim); 43/40 = 1.075 is
+  the case a floating-point mean gets wrong (1.07). `/admin/stats` sums the talk averages exactly
+  too. `UNCONFIRMED`
 - **D5** "Ties" in the ranking are talks whose **rounded** averages are equal (4.333… and 4.33 tie),
   then the talk with more reviewers (`ratingCount`, every reviewer) first, then the oldest: the
   ratings spec's tie-breaks, applied to the new average. `UNCONFIRMED`

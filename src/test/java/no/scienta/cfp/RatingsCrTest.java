@@ -77,6 +77,15 @@ class RatingsCrTest {
         assertEquals("3.38", average(rated(1, 5, 3, 3, 3, 3, 3, 4, 4, 4)));
         // the other 8 sum to 29 -> 3.625 -> 3.62
         assertEquals("3.62", average(rated(1, 5, 3, 3, 3, 4, 4, 4, 4, 4)));
+        // D4: 42 ratings, a 1 and a 2 left out, the other 40 sum to 43 -> 1.075 exactly -> 1.08. As a double 1.075 is
+        // 1.07499999..., so rounding a floating-point mean would give 1.07 (review finding S1).
+        int[] scores = new int[42];
+        java.util.Arrays.fill(scores, 1);
+        for (int i = 38; i < 42; i++) {
+            scores[i] = 2;
+        }
+        assertEquals("1.08", average(rated(scores)));
+        assertEquals(Double.valueOf(1.08), TalkDao.average(46, 42, 2, 1));
     }
 
     // R5, D5: ranked by the trimmed, rounded average; same average -> more reviewers -> oldest
