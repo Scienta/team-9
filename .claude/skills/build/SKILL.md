@@ -29,10 +29,14 @@ Keep it in the feature's own files where possible (controller, DAO). Schema chan
 `src/main/resources/schema.sql`, additive and idempotent. Use row locks or conditional writes for
 anything that can race.
 
+While writing it, run only your own test class (`./mvnw -q test -Dtest=<YourTest>`); the full run is
+for the gate below (`.claude/rules/build.md`).
+
 ## 3. Local gates
 
 All must pass, and you must have seen them pass:
-- `./mvnw -q package` (all tests, not just yours).
+- `./mvnw -q package` (all tests, not just yours). A build-cache hit (about 2 s, no tests run;
+  without `-q` it prints `Found cached build`) counts: the same inputs passed before. Never pass `-Dtest=` or `-DskipTests` here.
 - App running locally (`docker compose up -d`, `java -jar target/cfp.jar &`), then
   `HURL=workflow/bin/hurl examples/run.sh` (every Hurl file, not just yours). Stop the app after.
 
