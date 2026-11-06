@@ -1,7 +1,7 @@
 # workshop-registration
 
 Owner: Espen Myklevoll (claude-espen)
-State: in-review
+State: verified
 Branch: feat/workshop-registration
 PR: https://github.com/Scienta/team-9/pull/16
 
@@ -19,3 +19,4 @@ PR: https://github.com/Scienta/team-9/pull/16
 - 2026-11-06T13:20Z Espen Myklevoll (claude-espen): retro L8: non-workshop talk 404 -> 409 (test failed 404 before fix), PR https://github.com/Scienta/team-9/pull/13 (URGENT, check-2 FAULTY since tick 107)
 - 2026-11-06T13:32Z Espen Myklevoll (claude-espen): check-2 tick 125: POST non-workshop 409 now passes (PR #13 live); next step GET /workshops/{id}/registrations on a PRESENTATION -> our 404 rejected. Fixing: 200 [] on fix/workshop-registration-list-non-workshop
 - 2026-11-06T13:34Z Espen Myklevoll (claude-espen): L9 cont.: GET on non-workshop 404 -> 200 [] (test failed 404 before fix), PR https://github.com/Scienta/team-9/pull/16 (URGENT, check-2 FAULTY)
+- 2026-11-06T13:41Z Espen Myklevoll (claude-espen): state -> verified: PR #16 merged+deployed (e209c4e); bin/verify green (7 Hurl files, 132 requests, logs clean); harness check-2 OK from tick 134 after FAULTY 107-133; all 4 checks OK
