@@ -18,6 +18,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -27,6 +28,7 @@ import org.springframework.test.context.DynamicPropertySource;
  * SchedulingTest does.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@Import(ListQueriesTest.CountingDataSource.class)
 class ProgrammeExportTest {
 
     private static final String HEADER = "slot,start,end,room,talkId,title,format,speakers\n";
@@ -157,6 +159,7 @@ class ProgrammeExportTest {
             assertTrue(body.startsWith(HEADER), body);
             assertTrue(body.contains(",Smørbrød og Ålesund – ein føredrag,PRESENTATION,Bjørn Ærøy\n"), body);
             assertFalse(body.startsWith("\uFEFF"), "no BOM");
+            assertEquals("attachment; filename=programme.csv", res.headers().firstValue("Content-Disposition").orElse(null));
         }
     }
 
@@ -221,6 +224,46 @@ class ProgrammeExportTest {
     void otherMethodsAre405() throws Exception {
         assertEquals(405, send("POST", "/programme", "{}", null).statusCode());
         assertEquals(405, send("DELETE", "/programme.csv", null, null).statusCode());
+    }
+
+    // Concurrency and data, lessons.md L11: a full programme (15 talks, each with two co-speakers) takes a fixed number
+    // of statements, not one or more per row
+    @Test
+    void fullProgrammeTakesAFixedNumberOfQueries() throws Exception {
+        long co1 = speaker("Co One");
+        long co2 = speaker("Co Two");
+        int n = 0;
+        for (String slot : new String[] {"S1", "S2", "S3", "S4", "S5"}) {
+            for (String room : new String[] {"R1", "R2", "R3"}) {
+                long talk = accepted(speaker("Main " + n), "Talk " + n++, "PRESENTATION");
+                schedule(room, slot, talk);
+                if (room.equals("R1")) { // added after scheduling, so R7 of scheduling doesn't apply
+                    coSpeaker(talk, co1);
+                    coSpeaker(talk, co2);
+                }
+            }
+        }
+        for (String path : new String[] {"/programme", "/programme.csv"}) {
+            ListQueriesTest.STATEMENTS.set(0);
+            HttpResponse<String> res = get(path, null);
+            int statements = ListQueriesTest.STATEMENTS.get();
+            assertTrue(statements >= 1, path + ": no statements counted; is the counting DataSource wired?");
+            assertTrue(statements <= 3, path + " ran " + statements + " SQL statements for 15 rows");
+            assertTrue(res.body().contains("Co One") && res.body().contains("Talk 14"), res.body());
+        }
+    }
+
+    // D9: a scheduled talk whose main speaker row is missing (old data, no foreign key) still gets its row
+    @Test
+    void talkWithoutMainSpeakerRowStillExported() throws Exception {
+        long co = speaker("Only Co");
+        Long talk = jdbc.queryForObject("INSERT INTO talk (title, format, duration, level, status, speaker_id, submitted_at) "
+                + "VALUES ('Orphan', 'PRESENTATION', 45, 'BEGINNER', 'ACCEPTED', 2147483647, 0) RETURNING id", Long.class);
+        coSpeaker(talk, co);
+        schedule("R3", "S5", talk);
+        assertEquals("[" + row("S5", "15:45", "16:45", "R3", talk, "Orphan", "PRESENTATION", "\"Only Co\"") + "]",
+                get("/programme", null).body());
+        assertEquals(HEADER + "S5,15:45,16:45,R3," + talk + ",Orphan,PRESENTATION,Only Co\n", get("/programme.csv", null).body());
     }
 
     // ---------------------------------------------------------------- helpers

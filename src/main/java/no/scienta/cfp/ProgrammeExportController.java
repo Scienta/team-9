@@ -86,7 +86,9 @@ public class ProgrammeExportController {
                 String slot = (String) r.get("slot");
                 long talkId = ((Number) r.get("talk_id")).longValue();
                 List<String> speakers = new ArrayList<>();
-                speakers.add((String) r.get("speaker"));
+                if (r.get("speaker") != null) { // D9: a talk whose speaker row is missing still gets its row
+                    speakers.add((String) r.get("speaker"));
+                }
                 speakers.addAll(coSpeakers.getOrDefault(talkId, Collections.emptyList()));
                 Map<String, Object> row = new LinkedHashMap<>();
                 row.put("slot", slot);

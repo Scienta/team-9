@@ -18,11 +18,14 @@ public class ProgrammeExportDao {
         this.jdbc = jdbc;
     }
 
-    /** Every scheduled talk with its current title, format and main speaker's name, in programme order (R2). */
+    /**
+     * Every scheduled talk with its current title, format and main speaker's name, in programme order (R2). talk.speaker_id
+     * has no foreign key, so the name is null if the speaker row is missing (D9).
+     */
     public List<Map<String, Object>> rows() {
         // slot ids S1..S5 sort as their start times, room ids R1..R3 as the request lists them
         return jdbc.queryForList("SELECT p.slot, p.room, t.id AS talk_id, t.title, t.format, s.name AS speaker "
-                + "FROM programme p JOIN talk t ON t.id = p.talk_id JOIN speaker s ON s.id = t.speaker_id "
+                + "FROM programme p JOIN talk t ON t.id = p.talk_id LEFT JOIN speaker s ON s.id = t.speaker_id "
                 + "ORDER BY p.slot, p.room");
     }
 

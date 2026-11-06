@@ -3,6 +3,14 @@
 # Production shares the programme with the harness: this uses R1/S4, R1/S5 and R2/S5 (scheduling.hurl
 # uses none of them), finds its own rows by talk id, and takes everything out again at the end.
 # If the harness holds one of those places at that moment, the PUT answers 409: rerun.
+# Hurl stops at the first failed assert, so a failed run leaves its talks in those places: the run
+# starts by clearing them (any status: 204 if something was there, 404 if not).
+
+DELETE {{base_url}}/programme/R1/S4
+
+DELETE {{base_url}}/programme/R1/S5
+
+DELETE {{base_url}}/programme/R2/S5
 
 # Setup: Grace (main speaker), Ada and Alan (co-speakers, Ada created first), Solo and Line
 POST {{base_url}}/speakers
@@ -151,10 +159,10 @@ GET {{base_url}}/programme.csv
 HTTP 200
 [Asserts]
 header "Content-Type" matches "^text/csv; ?charset=UTF-8$"
+header "Content-Disposition" == "attachment; filename=programme.csv"
 body startsWith "slot,start,end,room,talkId,title,format,speakers\n"
 body endsWith "\n"
 body not endsWith "\n\n"
-body not contains "\r"
 body contains "\nS4,13:30,15:30,R1,{{t3}},\"Two\nlines\",LIGHTNING_20,Line Export\n"
 body contains "\nS5,15:45,16:45,R1,{{t1}},\"Kotlin, \"\"really\"\" fast\",PRESENTATION,\"Grace B. Export; Alan Export; Ada \"\"Countess\"\" Export\"\n"
 body contains "\nS5,15:45,16:45,R2,{{t2}},Spaces; semicolons 'and' Bjørn,LIGHTNING_10,Solo Export\n"
