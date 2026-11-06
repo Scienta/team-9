@@ -4,9 +4,11 @@ The process is in `workflow/README.md`; this is what every agent session must fo
 
 - Work on a feature goes through the skills in order: `/next` → `/spec` → `/build` → (person reviews
   and merges) → `/verify` → (person claims) → `/retro`. `/drive` runs them unattended.
-- One feature per branch, named `feat/<slug>`. Push the branch as soon as you start: `bin/next`
-  reads origin's branches to see who is on what, so an unpushed branch means two people (or two
-  loops) can end up building the same feature.
+- Before anything else on a feature, take it on the shared board: `workflow/bin/work start <slug>`
+  (`work-branch.md`). If it's taken, stop. Record every step there as it happens and push it at
+  once; that board is how every person's agents see who is on what.
+- One feature per branch, named `feat/<slug>`, in its own worktree (`worktrees.md`). Push the
+  branch as soon as you start: `bin/next` also reads origin's branches.
 - Never push to `main`, never merge a PR, never claim a feature. Those are a person's.
 - The request on the harness (`specs/<slug>.md`) is the business source of truth. Our team spec
   (`workflow/specs/<slug>.md`) is the source of truth for everything the request leaves open.
