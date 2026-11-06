@@ -92,6 +92,20 @@ class RatingsCrTest {
         assertEquals(List.of(trimmedToFive, fiveOfFour, fourAndAHalf), ids(get("/talks?sort=rating&speakerId=" + speaker)));
     }
 
+    // D5: a tie that only exists after rounding is a tie: more reviewers first (review finding E2)
+    @Test
+    void rankingTiesOnTheRoundedAverage() throws Exception {
+        long speaker = speaker();
+        long eighths = talk(speaker);         // 10 ratings, the middle 8 sum to 25: 3.125 -> 3.12
+        long seventeenths = talk(speaker);    // 19 ratings, the middle 17 sum to 53: 3.1176... -> 3.12
+        rate(eighths, 1, 5, 3, 3, 3, 3, 3, 3, 3, 4);
+        rate(seventeenths, 1, 5, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 5);
+        assertEquals("3.12", average(eighths));
+        assertEquals("3.12", average(seventeenths));
+        // Sorting on the exact value would put 3.125 first; on the rounded one they tie, and 19 reviewers beat 10.
+        assertEquals(List.of(seventeenths, eighths), ids(get("/talks?sort=rating&speakerId=" + speaker)));
+    }
+
     // D6: replacing a rating moves which scores are left out
     @Test
     void replacingARatingMovesTheTrim() throws Exception {
