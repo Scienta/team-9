@@ -2,7 +2,7 @@
 
 Feature request: [`specs/programme-export.md`](../../specs/programme-export.md), version 1.
 Builds on [scheduling](scheduling.md) (table `programme`, `Programme.SLOTS`) and co-speakers.
-Status: building
+Status: in-review
 
 ## Rules
 
