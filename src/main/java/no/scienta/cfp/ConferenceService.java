@@ -191,7 +191,10 @@ public class ConferenceService {
         try {
             lockTalk(talkId);
             getSpeaker(speakerId);
-            talkDao.removeCoSpeaker(talkId, speakerId);
+            if (!talkDao.removeCoSpeaker(talkId, speakerId)) {
+                // Includes the main speaker, and a repeated DELETE: unlike a repeated PUT, it's not a no-op.
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "speaker is not a co-speaker of this talk");
+            }
             return getTalk(talkId);
         } catch (DataAccessException e) {
             throw lockTimeoutOr(e);

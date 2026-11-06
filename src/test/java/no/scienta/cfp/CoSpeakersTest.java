@@ -84,10 +84,16 @@ class CoSpeakersTest {
             assertNotNull(match, path);
             ids(match, second, first);
         }
-        ids(mutate("DELETE", talk, third, 200), second, first);
-        ids(mutate("DELETE", talk, main, 200), second, first);
+        // Removing someone who isn't a co-speaker of this talk is a 404 and changes nothing: a registered
+        // speaker never added, the main speaker, and a co-speaker already removed (the harness's
+        // co-speakers/check-1 sends that repeated DELETE; lessons.md).
+        mutate("DELETE", talk, third, 404);
+        ids(get("/talks/" + talk), second, first);
+        mutate("DELETE", talk, main, 404);
+        ids(get("/talks/" + talk), second, first);
         ids(mutate("DELETE", talk, second, 200), first);
-        ids(mutate("DELETE", talk, second, 200), first);
+        mutate("DELETE", talk, second, 404);
+        ids(get("/talks/" + talk), first);
         ids(mutate("PUT", talk, second, 200), first, second);
         ids(mutate("DELETE", talk, first, 200), second);
         ids(mutate("DELETE", talk, second, 200));

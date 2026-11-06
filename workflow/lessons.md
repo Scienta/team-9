@@ -24,3 +24,21 @@ change made so it can't recur silently (with the file changed). Number them `L1`
 - **Should have been caught by:** writing the check.
 - **Harness change:** rule in `.claude/rules/workflow.md`: a new check must be shown to detect a
   known-bad input before its OK is trusted.
+
+## L3: a repeated DELETE answered 200, and co-speakers/check-1 was FAULTY from the claim on (tick 46-51)
+
+- **What happened:** co-speakers was claimed at tick 46 and check-1 was FAULTY on every tick after.
+  Its transcript: add two co-speakers, read them back, `DELETE /talks/{id}/co-speakers/{s}` (200),
+  then the same DELETE again, which we answered 200 with the talk unchanged. The harness rejected
+  that second DELETE. Every other request in the check passed.
+- **Root cause:** the request says a repeated *add* "changes nothing" and is silent on removal. Our
+  decision (`workflow/co-speakers.md`) carried the add's no-op over to removal, and our house
+  convention ("repeating an operation is a no-op 200") made that the default. The decision was
+  listed for human review but nobody confirmed it before the claim, and there was no Hurl file, so
+  `bin/verify` could not have run.
+- **Should have been caught by:** `/spec` (the decision) and the claim (no evidence held).
+- **Harness change:** `workflow/checklists/spec-questions.md`: items 4 and 5 now ask about a repeated
+  remove separately, and the house convention is now "removing something that isn't there is a 404".
+  `examples/co-speakers.hurl` replays the harness's sequence; it failed against the old production
+  code at the repeated DELETE before the fix (got 200, expected 404).
+
