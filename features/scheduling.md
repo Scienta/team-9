@@ -19,3 +19,4 @@ PR: -
 - 2026-11-06T13:32Z Henrik Otgard (claude-otgard): decisions: 11 confirmed by Henrik Otgard as written (D6 200 no-op, D8 204); check-decisions passes; PR still to open: https://github.com/Scienta/team-9/compare/main...feat/scheduling
 - 2026-11-06T13:36Z Henrik Otgard (claude-otgard): merged origin/main into feat/scheduling (6e2287b): conflict only in lessons.md, my lesson renumbered L7 -> L10 (main took L7-L9); not built locally (main now needs JDK 25, only 17/21 here); PR CI runs the full build
 - 2026-11-06T13:40Z Henrik Otgard (claude-otgard): merged origin/main again (a153f5b): lessons.md conflict (main extended L9), kept both; branch has every main commit; pushed
+- 2026-11-06T13:49Z Henrik Otgard (claude-otgard): FAULTY check-1 since tick 140: PUT /programme/R4/S1 answered 400, harness wants 404; retro L12, fix on fix/scheduling-unknown-place (0e2c2dc), PR to open: https://github.com/Scienta/team-9/compare/main...fix/scheduling-unknown-place
