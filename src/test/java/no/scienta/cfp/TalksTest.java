@@ -62,6 +62,18 @@ class TalksTest {
         assertEquals(3, count(talks.body()));
     }
 
+    @Test
+    void timestampsUseLegacyFormats() throws Exception {
+        String speaker = newSpeaker();
+        HttpResponse<String> res = http.send(request("POST", "/talks",
+                "{\"title\":\"T\",\"format\":\"WORKSHOP\",\"level\":\"BEGINNER\",\"speakerId\":" + speaker + "}"),
+                HttpResponse.BodyHandlers.ofString());
+        assertEquals(201, res.statusCode(), res.body());
+        assertTrue(res.body().matches(".*\"submittedAt\":\"\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}\\+00:00\".*"), res.body());
+        assertTrue(res.body().matches(".*\"submittedOn\":\"\\d{4}-\\d{2}-\\d{2}\".*"), res.body());
+        assertTrue(res.body().contains("\"durationMinutes\":120"), res.body());
+    }
+
     private String newSpeaker() throws Exception {
         HttpResponse<String> res = http.send(request("POST", "/speakers",
                 "{\"name\":\"Grace Hopper\",\"email\":\"grace-" + UUID.randomUUID() + "@example.com\"}"),

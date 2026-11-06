@@ -39,8 +39,8 @@ public class SpeakerController {
 
     // used by the admin UI to fix typos
     @PutMapping("/{id}")
-    public Map<String, Object> update(@PathVariable("id") Long id, @RequestBody Map<String, String> body) {
-        return service.updateSpeaker(id, body.get("name"), body.get("email"), body.get("bio"));
+    public Map<String, Object> update(@PathVariable("id") Long id, @Valid @RequestBody SpeakerForm form) {
+        return service.updateSpeaker(id, form.getName(), form.getEmail(), form.getBio());
     }
 
     @GetMapping("/{id}/talks")

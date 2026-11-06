@@ -11,7 +11,6 @@ import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -85,19 +84,23 @@ public class ConferenceService {
     @Transactional
     public Map<String, Object> updateSpeaker(long id, String name, String email, String bio) {
         Map<String, Object> existing = getSpeaker(id);
-        if (name == null || name.equals("")) {
+        if (Utils.isEmpty(name)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "name is required");
         }
         if (!Utils.isValidEmail(email)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "invalid email");
         }
-        if (bio != null && bio.length() > 1000) {
+        if (bio != null && bio.length() > 500) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "bio too long");
         }
         if (!email.equalsIgnoreCase((String) existing.get("email")) && speakerDao.emailTaken(email)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "email already registered");
         }
-        speakerDao.update(id, name, email, bio);
+        try {
+            speakerDao.update(id, name, email, bio);
+        } catch (DuplicateKeyException e) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "email already registered");
+        }
         return getSpeaker(id);
     }
 
@@ -257,7 +260,7 @@ public class ConferenceService {
         stats.put("byFormat", byFormat);
         stats.put("byLevel", byLevel);
         stats.put("byStatus", byStatus);
-        stats.put("totalHours", minutes / 60);
+        stats.put("totalHours", minutes / 60.0);
         stats.put("averageRating", rated == 0 ? null : Utils.roundRating(ratingSum / rated));
         stats.put("generated", Utils.now());
         return stats;

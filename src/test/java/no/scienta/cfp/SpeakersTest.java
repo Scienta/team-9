@@ -72,6 +72,28 @@ class SpeakersTest {
         assertTrue(found.body().contains("\"name\":\"Ada " + name + "\""), found.body());
     }
 
+    @Test
+    void searchTreatsQueryAsDataNotSql() throws Exception {
+        assertEquals(201, register("Injection Target", "target-" + UUID.randomUUID() + "@example.com").statusCode());
+        HttpResponse<String> found = send("GET", "/speakers/search?q=%27%20OR%20%271%27%3D%271");
+        assertEquals(200, found.statusCode(), found.body());
+        assertEquals("[]", found.body());
+    }
+
+    @Test
+    void updateValidatesLikeRegistration() throws Exception {
+        HttpResponse<String> created = register("Ada", "ada-" + UUID.randomUUID() + "@example.com");
+        String id = created.body().replaceAll(".*\"id\":(\\d+).*", "$1");
+        String longBio = "x".repeat(501);
+        HttpResponse<String> res = http.send(request("PUT", "/speakers/" + id,
+                "{\"name\":\"Ada\",\"email\":\"ada@example.com\",\"bio\":\"" + longBio + "\"}"),
+                HttpResponse.BodyHandlers.ofString());
+        assertEquals(400, res.statusCode(), res.body());
+        res = http.send(request("PUT", "/speakers/" + id, "{\"name\":\"  \",\"email\":\"ada@example.com\"}"),
+                HttpResponse.BodyHandlers.ofString());
+        assertEquals(400, res.statusCode(), res.body());
+    }
+
     private HttpResponse<String> register(String name, String email) throws Exception {
         return http.send(request("POST", "/speakers", speaker(name, email)), HttpResponse.BodyHandlers.ofString());
     }

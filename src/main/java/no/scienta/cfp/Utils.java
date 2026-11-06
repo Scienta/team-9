@@ -1,5 +1,7 @@
 package no.scienta.cfp;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -39,19 +41,17 @@ public class Utils {
     }
 
     /**
-     * Epoch millis to a date-only java.sql.Date (UTC day).
+     * Epoch millis to a date (UTC day).
      */
-    public static java.sql.Date toSqlDate(long millis) {
-        SimpleDateFormat f = new SimpleDateFormat("yyyy-MM-dd");
-        f.setTimeZone(UTC);
-        return java.sql.Date.valueOf(f.format(new Date(millis)));
+    public static java.time.LocalDate toUtcDate(long millis) {
+        return java.time.Instant.ofEpochMilli(millis).atZone(java.time.ZoneOffset.UTC).toLocalDate();
     }
 
     /**
      * "11/4/26, 1:05 PM", what the reviewer UI shows.
      */
     public static String usShort(Date d) {
-        DateFormat f = DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT, Locale.US);
+        DateFormat f = new SimpleDateFormat("M/d/yy, h:mm a", Locale.US);
         f.setTimeZone(UTC);
         return f.format(d);
     }
@@ -72,8 +72,8 @@ public class Utils {
         if (s == null) {
             return "";
         }
-        if (s.contains(";") || s.contains("\"")) {
-            return "\"" + s.replace("\"", "'") + "\"";
+        if (s.contains(";") || s.contains("\"") || s.contains("\n") || s.contains("\r")) {
+            return "\"" + s.replace("\"", "\"\"") + "\"";
         }
         return s;
     }
@@ -102,7 +102,7 @@ public class Utils {
      * Rounds a rating average to one decimal.
      */
     public static double roundRating(double avg) {
-        return Math.floor(avg * 10) / 10.0;
+        return BigDecimal.valueOf(avg).setScale(1, RoundingMode.HALF_UP).doubleValue();
     }
 
     public static String capitalize(String s) {

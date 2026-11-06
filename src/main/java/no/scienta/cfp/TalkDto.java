@@ -1,6 +1,9 @@
 package no.scienta.cfp;
 
+import java.time.LocalDate;
 import java.util.Date;
+
+import com.fasterxml.jackson.annotation.JsonFormat;
 
 /**
  * A talk as the API returns it. Also used internally all over the place.
@@ -14,8 +17,10 @@ public class TalkDto {
     public Long speakerId;
     public Integer durationMinutes;
     public String status;
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss.SSS'+00:00'", timezone = "UTC")
     public Date submittedAt;
-    public java.sql.Date submittedOn;  // the reporting tool wants a plain date
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
+    public LocalDate submittedOn;  // the reporting tool wants a plain date
     public Double averageRating;
     public int ratingCount;
 }

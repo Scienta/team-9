@@ -33,12 +33,30 @@ class UtilsTest {
         assertEquals("Workshop", Utils.capitalize("WORKSHOP"));
     }
 
-    // Averages are shown with one decimal, cut off (CFP-61)
+    // Averages are shown with one decimal, halves rounded up (ratings spec)
     @Test
     void roundsRatingToOneDecimal() {
-        assertEquals(4.2, Utils.roundRating(4.25));
-        assertEquals(3.6, Utils.roundRating(3.6666));
+        assertEquals(4.3, Utils.roundRating(4.25));
+        assertEquals(3.7, Utils.roundRating(3.6666));
         assertEquals(4.5, Utils.roundRating(4.5));
+    }
+
+    @Test
+    void usShortFormat() {
+        assertEquals("11/4/26, 1:05 PM", Utils.usShort(new Date(1793797500000L)));
+        assertEquals("11/4/26, 12:00 AM", Utils.usShort(new Date(1793750400000L)));
+    }
+
+    @Test
+    void submittedOnIsUtcDate() {
+        assertEquals("2026-11-04", Utils.toUtcDate(1793836799000L).toString());
+    }
+
+    @Test
+    void csvEscapesQuotesAndNewlines() {
+        assertEquals("\"a \"\"b\"\"\"", Utils.csv("a \"b\""));
+        assertEquals("\"a\nb\"", Utils.csv("a\nb"));
+        assertEquals("plain", Utils.csv("plain"));
     }
 
     @Disabled("flaky on Jenkins")
