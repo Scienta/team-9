@@ -77,6 +77,12 @@ class UpgradeTest {
         assertTrue(talk.body().matches(
                 ".*\"submittedAt\":\"\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}\\+00:00\".*"), talk.body());
         assertTrue(talk.body().matches(".*\"submittedOn\":\"\\d{4}-\\d{2}-\\d{2}\".*"), talk.body());
+        // submittedOn is the UTC date of submittedAt, whatever the server's zone (Jackson 3 on its own writes dates
+        // in other ways; team 7 got the server's day). Checked by hand with TZ=Pacific/Kiritimati too.
+        Matcher at = Pattern.compile("\"submittedAt\":\"([^\"]+)\"").matcher(talk.body());
+        Matcher on = Pattern.compile("\"submittedOn\":\"([^\"]+)\"").matcher(talk.body());
+        assertTrue(at.find() && on.find(), talk.body());
+        assertEquals(at.group(1).substring(0, 10), on.group(1));
         // Jackson 2's field order (declaration order), not Jackson 3's alphabetical one.
         assertTrue(talk.body().matches("\\{\"id\":\\d+,\"title\":\"T\",\"format\":\"PRESENTATION\",\"level\":\"BEGINNER\","
                 + "\"speakerId\":\\d+,\"coSpeakerIds\":\\[],\"durationMinutes\":45,\"status\":\"SUBMITTED\",.*"), talk.body());
