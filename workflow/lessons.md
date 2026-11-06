@@ -291,3 +291,34 @@ change made so it can't recur silently (with the file changed). Number them `L1`
   with 200 when `lockSpeaker` is removed), D6 accept at load 5 in `#overTheCapKeepsEverythingButGetsNothingNew`
   (fails with a re-check added to `decide`), `TalkDao.IN_THE_RUNNING` shared by both checks,
   `workflow/co-speakers.md` updated, and three more Hurl requests.
+
+## L18: locks held in every test but not in production: transactions there read a stale snapshot (ticks 144-213)
+
+- **What happened:** workshop-registration/check-4 and scheduling/check-6 went FAULTY now and then,
+  between long OK runs. Transcripts and logs: production stored 21 registrations for a 20-seat
+  workshop (9293, tick 213); two talks of one speaker were both placed in slot S2 (tick 212); and a
+  PUT that had waited 2.6 s for the slot lock still found the place empty, then hit the primary key.
+  Every rush test and a 26-way rush against a local build held, and so did a rush against production
+  itself on a quiet minute.
+- **Root cause:** production's database starts transactions at REPEATABLE READ, and the
+  `@Transactional(isolation = READ_COMMITTED)` pin doesn't reach them: the JDBC driver sets it with a
+  session-level `SET`, and the connection pooler in front of the database (the same reason advisory
+  locks aren't available) runs the transaction on a backend that never saw it. So a lock-then-read
+  read the snapshot from before the lock wait. Every lock-then-read lost its pin this way (the 3-talk
+  cap, co-speakers and acceptance too), and plain `@Transactional` methods ran at REPEATABLE READ as
+  well. Our tests ran against plain Postgres, where the pin works; the REPEATABLE READ tests set the
+  database default but not the dropped `SET`, so they passed on the broken code.
+- **Should have been caught by:** `/spec` and review-edge (what the database does between us and
+  Postgres), and a test environment that behaves like production.
+- **Harness change:** `TransactionConfig` sets the level with `SET TRANSACTION ISOLATION LEVEL ...`
+  as each transaction's first statement (DEFAULT means READ COMMITTED). `PooledIsolationTest`
+  reproduces production (database default REPEATABLE READ, `setTransactionIsolation` dropped) and
+  rushes the workshop seats, one speaker in a slot, one talk per place, the 3-talk cap, the
+  2 co-speakers, a submission racing a co-speaker invitation, and simultaneous decisions: before the
+  fix 23 of 20 seats, 3 talks of one speaker in a slot, 10 of 3 talks, 5 of 2 co-speakers and a load
+  of 8 of 3 got through, and a decision answered 500. review-edge confirmed the mechanism on a real
+  pgbouncer in transaction mode: with the driver's SET and Spring's reset, 39 of 200 transactions ran
+  at REPEATABLE READ (why the checks failed only now and then); with the fix, 0. It also
+  checks the driver is never asked for a session-level isolation `SET` (4 per two requests before).
+  `workflow/checklists/spec-questions.md` item 11 and `review.md` ask for every new lock-guarded
+  limit to have a rush there. `REVIEW.md` section 4.

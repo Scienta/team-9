@@ -118,17 +118,22 @@ that is "the subject of the action". The harness wants 400, as for `POST /talks`
 **workshop-registration/check-4 and scheduling/check-6: races under load, from tick 176.** The
 harness sends many requests at once. Production stored 21 registrations for a 20-seat workshop
 (ticks 176-213), and placed one speaker twice in the same slot (ticks 206, 212). Every request
-locks the row first (`SELECT … FOR UPDATE`), and our tests pass, but after waiting for the lock,
-production counts from a stale snapshot (Henrik's diagnosis on the board). We set `READ COMMITTED`
-per session, and in production that doesn't reach the transaction through the platform's connection
-pooler. Local Postgres has no pooler, so our local tests didn't show it. The fix sets the isolation inside each
-transaction (on `fix/isolation-in-transaction`, not merged yet). AGENTS.md warned about session
-`SET` leaking through the pool, but no checklist asked what that does to isolation.
+locks the row first (`SELECT … FOR UPDATE`), and our tests passed, but after waiting for the lock,
+production counted from a stale snapshot. Production's database starts transactions at REPEATABLE
+READ; we set `READ COMMITTED` per session (the driver's `setTransactionIsolation`), and that doesn't
+reach the transaction through the platform's connection pooler. Local Postgres has no pooler, so our
+tests didn't show it; review-edge confirmed it on a real pgbouncer (39 of 200 transactions at
+REPEATABLE READ with the old setup, 0 with the fix). AGENTS.md warned about session `SET` leaking
+through the pool, but no checklist asked what that does to isolation. `TransactionConfig` now sets
+the level inside each transaction, and `PooledIsolationTest` runs every lock-guarded limit the way
+production does ([lessons.md](workflow/lessons.md) L18).
 
 **submission-cap-cr/check-4, FAULTY at tick 218, four ticks after the claim.** In a burst of
 requests for one speaker at the cap, `PUT /talks/9656/co-speakers/9572` answered 200 while the
-requests either side of it answered 409 "already presents 3 talks". It looks like the same stale
-read; that isn't confirmed yet.
+requests either side of it answered 409 "already presents 3 talks". The same stale read:
+`PooledIsolationTest#submissionAndCoSpeakingRaceNeverExceedTheLoad` races submissions against
+co-speaker invitations for one speaker, and without the fix 6 of 1 got through (a load of 8 of 3);
+with it exactly one does (L18).
 
 ## 5. Reusable artifacts
 

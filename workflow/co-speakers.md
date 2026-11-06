@@ -53,9 +53,12 @@ Requirements: released co-speakers v1 snapshot. These choices fill in unspecifie
   taken at the first query (the FOR UPDATE itself, before the wait). Queued additions would then see
   stale membership and go past the 2-member cap. Verified: with the annotation removed and the
   database default set to REPEATABLE READ, 4 queued PUTs gave 4 × 200 instead of 2.
-- Spring's `DataSourceTransactionManager` sets the level on the connection and restores the previous
-  one afterwards. Tests check every pooled connection afterwards: the database default is kept
-  (`read committed` normally, `repeatable read` in the REPEATABLE READ test), and `lock_timeout` is `0`.
+- The level is set by `TransactionConfig` with `SET TRANSACTION ISOLATION LEVEL READ COMMITTED` inside
+  the transaction, not by the driver on the connection: in production the driver's session-level `SET`
+  never reached the transaction through the pooler, and the cap broke (lessons.md L18;
+  `PooledIsolationTest#coSpeakerRushNeverExceedsTwo`). Tests check every pooled connection afterwards:
+  the database default is kept (`read committed` normally, `repeatable read` in the REPEATABLE READ
+  test), and `lock_timeout` is `0`.
 
 ### Database-level idempotency
 - `TalkDao.addCoSpeaker` uses `INSERT ... ON CONFLICT (talk_id, speaker_id) DO NOTHING`. A duplicate
